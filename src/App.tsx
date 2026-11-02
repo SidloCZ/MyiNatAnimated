@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { InatObservation, HighlightItem } from './types/inat';
 import { TimelineData } from './types/timeline';
 import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
@@ -6,6 +6,7 @@ import { pickSuggestedHighlights } from './services/highlightScorer';
 import { buildTimeline } from './engine/timelineBuilder';
 import { preloadMapTiles } from './engine/tilePreloader';
 import { getTaxonVisuals } from './assets/icons/taxaIcons';
+import { isObservationObscured } from './services/inatApi';
 import { SearchForm } from './components/SearchForm';
 import { HighlightPicker } from './components/HighlightPicker';
 import { PrepareProgress } from './components/PrepareProgress';
@@ -20,6 +21,7 @@ export function App() {
   const [suggestedHighlights, setSuggestedHighlights] = useState<HighlightItem[]>([]);
   const [selectedHighlightIds, setSelectedHighlightIds] = useState<Set<number>>(new Set());
   const [sequenceType, setSequenceType] = useState<'observed' | 'created'>('observed');
+  const [filterObscured, setFilterObscured] = useState<boolean>(true);
 
   // Preparation state
   const [prepareStatus, setPrepareStatus] = useState('');
@@ -30,12 +32,25 @@ export function App() {
   const [sprites, setSprites] = useState<PreloadedSprites | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Filtered observations (removes blurred/obscured coordinates that cause erratic jumps)
+  const activeObservations = useMemo(() => {
+    if (!filterObscured) return observations;
+    const filtered = observations.filter(obs => !isObservationObscured(obs));
+    return filtered.length > 0 ? filtered : observations;
+  }, [observations, filterObscured]);
+
+  const obscuredCount = useMemo(() => {
+    return observations.filter(isObservationObscured).length;
+  }, [observations]);
+
   // Step 1: Data loaded from API or Demo
   const handleDataLoaded = (loadedObs: InatObservation[], user: string) => {
     setUsername(user);
     setObservations(loadedObs);
 
-    const highlights = pickSuggestedHighlights(loadedObs, 8);
+    const validObs = filterObscured ? loadedObs.filter(o => !isObservationObscured(o)) : loadedObs;
+    const pool = validObs.length > 0 ? validObs : loadedObs;
+    const highlights = pickSuggestedHighlights(pool, 8);
     setSuggestedHighlights(highlights);
 
     // Pre-select top 5 highlights by default
@@ -43,6 +58,27 @@ export function App() {
     setSelectedHighlightIds(defaultIds);
 
     setStep('highlights');
+  };
+
+  // Toggle filtering obscured observations
+  const handleFilterObscuredChange = (val: boolean) => {
+    setFilterObscured(val);
+    const validObs = val ? observations.filter(o => !isObservationObscured(o)) : observations;
+    const pool = validObs.length > 0 ? validObs : observations;
+    const highlights = pickSuggestedHighlights(pool, 8);
+    setSuggestedHighlights(highlights);
+
+    const activeIds = new Set(pool.map(o => o.id));
+    setSelectedHighlightIds(prev => {
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (activeIds.has(id)) next.add(id);
+      }
+      if (next.size === 0) {
+        highlights.slice(0, 5).forEach(h => next.add(h.observation.id));
+      }
+      return next;
+    });
   };
 
   // Step 2: Toggle highlights in/out
@@ -65,8 +101,8 @@ export function App() {
     // Slight delay so UI renders the progress card
     await new Promise(r => setTimeout(r, 60));
 
-    // 1. Build timeline
-    const tl = buildTimeline(observations, {
+    // 1. Build timeline using active observations
+    const tl = buildTimeline(activeObservations, {
       targetDurationSeconds: 32,
       selectedHighlightIds,
       sequenceType,
@@ -111,14 +147,14 @@ export function App() {
 
     setPrepareStatus('Přednačítání fotografií vybraných highlightů…');
     const loadedSprites = await preloadSprites(visualsList, photosToLoad, (p) => {
-      setPreparePercent(25 + p * 30);
+      setPreparePercent(25 + Math.round(p * 30));
     });
     setSprites(loadedSprites);
 
-    // 3. Preload map tiles along the entire animation path so there is no dark flicker during playback!
+    // 3. Preload map tiles along the entire animation path so there is no dark flicker during playback
     setPrepareStatus('Přednačítání mapových podkladů podél trasy animace…');
-    await preloadMapTiles(tl.cameraKeyframes, MAP_STYLES.dark.style, (p) => {
-      setPreparePercent(55 + p * 43);
+    await preloadMapTiles(tl.cameraKeyframes, MAP_STYLES.dark.style, (p: number) => {
+      setPreparePercent(55 + Math.round(p * 43));
     });
 
     setPreparePercent(100);
@@ -164,11 +200,14 @@ export function App() {
 
         {step === 'highlights' && (
           <HighlightPicker
-            observations={observations}
+            observations={activeObservations}
             suggestedHighlights={suggestedHighlights}
             selectedIds={selectedHighlightIds}
             sequenceType={sequenceType}
             onSequenceTypeChange={setSequenceType}
+            filterObscured={filterObscured}
+            onFilterObscuredChange={handleFilterObscuredChange}
+            obscuredCount={obscuredCount}
             onToggleHighlight={handleToggleHighlight}
             onProceed={handleStartPreparation}
             onBack={() => setStep('search')}

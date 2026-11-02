@@ -8,6 +8,9 @@ interface HighlightPickerProps {
   selectedIds: Set<number>;
   sequenceType: 'observed' | 'created';
   onSequenceTypeChange: (type: 'observed' | 'created') => void;
+  filterObscured: boolean;
+  onFilterObscuredChange: (filter: boolean) => void;
+  obscuredCount: number;
   onToggleHighlight: (id: number) => void;
   onProceed: () => void;
   onBack: () => void;
@@ -19,6 +22,9 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   selectedIds,
   sequenceType,
   onSequenceTypeChange,
+  filterObscured,
+  onFilterObscuredChange,
+  obscuredCount,
   onToggleHighlight,
   onProceed,
   onBack,
@@ -31,16 +37,21 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
             Výběr highlightů
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Vyberte pozorování, u kterých se kamera zpomalí a zobrazí se detailní vizitka.
+            Vyberte pozorování, u&nbsp;kterých se kamera zpomalí a&nbsp;zobrazí se detailní vizitka.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <span className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
             Vybráno: {selectedIds.size}
           </span>
           <span className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400">
             Celkem: {observations.length}&nbsp;pozorování
           </span>
+          {filterObscured && obscuredCount > 0 && (
+            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              {obscuredCount}&nbsp;zkreslených skryto
+            </span>
+          )}
         </div>
       </div>
 
@@ -133,32 +144,46 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-xs text-slate-400 font-medium">Pořadí animace:</span>
-          <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-            <button
-              type="button"
-              onClick={() => onSequenceTypeChange('observed')}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                sequenceType === 'observed'
-                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Datum pozorování
-            </button>
-            <button
-              type="button"
-              onClick={() => onSequenceTypeChange('created')}
-              className={`px-3 py-1.5 rounded-lg transition ${
-                sequenceType === 'created'
-                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Datum nahrání
-            </button>
+        <div className="flex flex-wrap items-center gap-4 self-start sm:self-auto">
+          {/* Pořadí animace */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium">Pořadí:</span>
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => onSequenceTypeChange('observed')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  sequenceType === 'observed'
+                    ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Datum pozorování
+              </button>
+              <button
+                type="button"
+                onClick={() => onSequenceTypeChange('created')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  sequenceType === 'created'
+                    ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Datum nahrání
+              </button>
+            </div>
           </div>
+
+          {/* Filtr zkreslených souřadnic */}
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-1">
+            <input
+              type="checkbox"
+              checked={filterObscured}
+              onChange={(e) => onFilterObscuredChange(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+            />
+            <span>Skrýt zkreslené / soukromé body</span>
+          </label>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">

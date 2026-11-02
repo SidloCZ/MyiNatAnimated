@@ -4,6 +4,15 @@ import { getCachedObservations, setCachedObservations } from './cache';
 
 const INAT_API_BASE = 'https://api.inaturalist.org/v1';
 
+export function isObservationObscured(obs: InatObservation): boolean {
+  if (obs.obscured === true) return true;
+  if (obs.geoprivacy === 'obscured' || obs.geoprivacy === 'private') return true;
+  if (obs.taxon_geoprivacy === 'obscured' || obs.taxon_geoprivacy === 'private') return true;
+  if (!obs.geojson?.coordinates || obs.geojson.coordinates.length < 2) return true;
+  if (typeof obs.positional_accuracy === 'number' && obs.positional_accuracy > 12000) return true;
+  return false;
+}
+
 export interface FetchOptions {
   username: string;
   d1?: string;

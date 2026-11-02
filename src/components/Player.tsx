@@ -16,6 +16,7 @@ import {
 import { TimelineData } from '../types/timeline';
 import { PreloadedSprites } from '../engine/spriteAtlas';
 import { interpolateCamera } from '../engine/cameraDirector';
+import { warmupMapTiles, waitForMapIdle } from '../engine/tilePreloader';
 import { renderDopamineFrame } from '../engine/dopamineCanvas';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
@@ -76,8 +77,12 @@ export const Player: React.FC<PlayerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
+  const [bufferProgress, setBufferProgress] = useState(0);
+  const cancelBufferingRef = useRef(false);
+
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState(false);
@@ -105,10 +110,47 @@ export const Player: React.FC<PlayerProps> = ({
   const speedRef = useRef(playbackSpeed);
   speedRef.current = playbackSpeed;
 
+  const handleSkipBuffering = () => {
+    cancelBufferingRef.current = true;
+    setIsBuffering(false);
+    setIsMapReady(true);
+    setIsPlaying(true);
+    const map = mapRef.current;
+    if (map) {
+      const initialKeyframe = timeline.cameraKeyframes[0];
+      if (initialKeyframe) {
+        map.jumpTo({
+          center: initialKeyframe.center,
+          zoom: initialKeyframe.zoom,
+          pitch: initialKeyframe.pitch,
+          bearing: initialKeyframe.bearing,
+        });
+      }
+    }
+  };
+
   const handleStyleChange = (key: MapStyleKey) => {
     setMapStyleKey(key);
-    if (mapRef.current) {
-      mapRef.current.setStyle(MAP_STYLES[key].style);
+    const map = mapRef.current;
+    if (map) {
+      setIsPlaying(false);
+      setIsBuffering(true);
+      setBufferProgress(0);
+      cancelBufferingRef.current = false;
+      map.setStyle(MAP_STYLES[key].style);
+
+      map.once('style.load', async () => {
+        await warmupMapTiles(map, timeline.cameraKeyframes, {
+          onProgress: (p) => setBufferProgress(Math.round(p * 100)),
+          shouldCancel: () => cancelBufferingRef.current,
+          timeoutPerStepMs: 1200,
+        });
+        if (!cancelBufferingRef.current) {
+          setIsBuffering(false);
+          setIsMapReady(true);
+          setIsPlaying(true);
+        }
+      });
     }
   };
 
@@ -132,19 +174,35 @@ export const Player: React.FC<PlayerProps> = ({
       bearing: initialKeyframe.bearing,
       interactive: false, // Directed camera controls movement
       attributionControl: false,
+      maxTileCacheSize: 3000,
+      renderWorldCopies: false,
     });
 
-    map.once('load', () => {
-      if (map.areTilesLoaded()) {
+    cancelBufferingRef.current = false;
+    setIsBuffering(true);
+    setBufferProgress(0);
+    setIsMapReady(false);
+    setIsPlaying(false);
+
+    map.once('load', async () => {
+      // Warm up map tiles along the flight trajectory directly on this map instance
+      await warmupMapTiles(map, timeline.cameraKeyframes, {
+        onProgress: (p) => setBufferProgress(Math.round(p * 100)),
+        shouldCancel: () => cancelBufferingRef.current,
+        timeoutPerStepMs: 1200,
+      });
+
+      if (!cancelBufferingRef.current) {
+        setIsBuffering(false);
         setIsMapReady(true);
-      } else {
-        map.once('idle', () => setIsMapReady(true));
+        setIsPlaying(true);
       }
     });
 
     mapRef.current = map;
 
     return () => {
+      cancelBufferingRef.current = true;
       map.remove();
       mapRef.current = null;
     };
@@ -293,12 +351,15 @@ export const Player: React.FC<PlayerProps> = ({
       bearing: cam.bearing,
     });
 
-    // Wait for map tiles to settle
-    await new Promise<void>((resolve) => {
-      map.once('render', () => resolve());
-      // Fallback timeout in case render already triggered
-      setTimeout(resolve, 50);
-    });
+    // Wait for map tiles to settle completely before grabbing frame
+    if (!map.areTilesLoaded()) {
+      await waitForMapIdle(map, 800);
+    } else {
+      await new Promise<void>((resolve) => {
+        map.once('render', () => resolve());
+        setTimeout(resolve, 40);
+      });
+    }
 
     const targetCtx = targetCanvas.getContext('2d');
     if (!targetCtx) return;
@@ -415,6 +476,50 @@ export const Player: React.FC<PlayerProps> = ({
       <div className="relative flex-1 w-full h-full overflow-hidden">
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+
+        {/* Map Tile Preload / Warmup Overlay */}
+        {isBuffering && (
+          <div className="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+            <div className="max-w-sm w-full bg-slate-900/90 border border-slate-800/90 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4">
+              <div className="relative w-12 h-12 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
+                <MapIcon className="w-5 h-5 text-emerald-400" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-white tracking-tight">
+                  Přednačítání mapových podkladů
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Ukládání trasy do paměti GPU pro plynulý přelet bez zpoždění a problikávání dlaždic.
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full space-y-1.5">
+                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300 rounded-full"
+                    style={{ width: `${bufferProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
+                  <span>Trasa kamery</span>
+                  <span className="text-emerald-400 font-semibold">{bufferProgress}&nbsp;%</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSkipBuffering}
+                className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                Přeskočit a spustit ihned
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Top Header Overlay Bar */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">

@@ -44,6 +44,10 @@ export interface InatObservation {
     type: string;
     coordinates: [number, number]; // [lng, lat]
   };
+  obscured?: boolean;
+  geoprivacy?: 'obscured' | 'private' | 'open' | null;
+  taxon_geoprivacy?: 'obscured' | 'private' | 'open' | null;
+  positional_accuracy?: number | null;
   faves_count: number;
   comments_count: number;
   identifications_count: number;

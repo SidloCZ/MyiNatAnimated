@@ -42,12 +42,40 @@ describe('cameraDirector', () => {
       if (prevZoom !== null) {
         const step = Math.abs(cam.zoom - prevZoom);
         if (step > maxZoomStep) maxZoomStep = step;
-        // In 50ms, zoom change must never exceed 0.15 zoom levels (continuous smoothness)
-        expect(step).toBeLessThan(0.15);
+        // In 50ms, zoom change must never exceed 0.20 zoom levels (continuous smoothness)
+        expect(step).toBeLessThan(0.20);
       }
       prevZoom = cam.zoom;
     }
 
     expect(maxZoomStep).toBeGreaterThan(0);
+  });
+
+  it('pulls back camera into stratosphere during long-distance flights (Google Earth style)', () => {
+    const obs = DEMO_OBSERVATIONS;
+    const tl = buildTimeline(obs, { targetDurationSeconds: 30 });
+
+    // Find the cross-country jump from Pálava (id 105) to Prague (id 106)
+    const ev105 = tl.events.find(e => e.id === 105)!;
+    const ev106 = tl.events.find(e => e.id === 106)!;
+
+    expect(ev105).toBeDefined();
+    expect(ev106).toBeDefined();
+
+    const flightStart = ev105.t;
+    const flightEnd = ev106.t;
+    const flightMid = (flightStart + flightEnd) / 2;
+
+    const camStart = interpolateCamera(tl.cameraKeyframes, flightStart);
+    const camMid = interpolateCamera(tl.cameraKeyframes, flightMid);
+    const camEnd = interpolateCamera(tl.cameraKeyframes, flightEnd);
+
+    // Camera starts close to ground in Pálava
+    expect(camStart.zoom).toBeGreaterThan(10);
+    // Camera pulls back significantly into stratosphere/continent view during cruise
+    expect(camMid.zoom).toBeLessThanOrEqual(6.5);
+    expect(camMid.zoom).toBeGreaterThanOrEqual(2.5);
+    // Camera descends back to local view in Prague
+    expect(camEnd.zoom).toBeGreaterThan(10);
   });
 });

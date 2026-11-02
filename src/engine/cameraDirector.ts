@@ -8,11 +8,12 @@ export interface CameraDirectorConfig {
 }
 
 export function calculateFlightDuration(distKm: number): number {
-  if (distKm < 20) return 0;
-  if (distKm < 60) return 2.4;
-  if (distKm < 150) return 3.2;
-  if (distKm < 400) return 4.0;
-  return 4.6; // Long distance or cross-country flights
+  if (distKm < 15) return 0;
+  if (distKm < 50) return 2.8;
+  if (distKm < 150) return 3.8;
+  if (distKm < 400) return 5.0;
+  if (distKm < 1200) return 6.2;
+  return 7.5; // Long distance or cross-country flights
 }
 
 // Haversine distance in km between two [lng, lat] points
@@ -38,10 +39,10 @@ export function generateCameraKeyframes(
   config: CameraDirectorConfig = {}
 ): CameraKeyframe[] {
   const {
-    minZoom = 6.0,
+    minZoom = 2.5,
     maxZoom = 13.5,
     zoomInRate = 0.12,
-    arcFlyDistanceKm = 20,
+    arcFlyDistanceKm = 15,
   } = config;
 
   if (events.length === 0) {
@@ -90,11 +91,14 @@ export function generateCameraKeyframes(
       const targetCenter: [number, number] = [ev.coordinates[0], ev.coordinates[1]];
       const targetZoom = Math.min(maxZoom, 11.5);
 
-      // Smooth altitude pullback (gentle and majestic)
-      const zoomDip = Math.min(
-        startZoom - minZoom,
-        Math.max(1.8, Math.log2(distToPrev / 15) * 1.1)
-      );
+      // Google Earth style cruise altitude:
+      // Sub-regional (15-50 km): zoom ~8-9.5
+      // Regional / national (50-200 km): zoom ~6.0-7.5
+      // Continental (200-1000 km): zoom ~4.0-5.5
+      // Hemispheric (>1000 km): zoom ~2.5-3.5
+      const targetCruiseZoom = Math.max(minZoom, Math.min(8.5, 10.0 - Math.log2(distToPrev / 15) * 1.05));
+      const midBaseZoom = (startZoom + targetZoom) / 2;
+      const zoomDip = Math.max(1.8, midBaseZoom - targetCruiseZoom);
 
       // Record flight start with full flight parameters
       keyframes.push({
@@ -213,11 +217,11 @@ export function interpolateCamera(keyframes: CameraKeyframe[], t: number): Camer
     const startZoom = k1.zoom;
     const targetZoom = k1.flight.targetZoom;
     const baseZoom = startZoom + (targetZoom - startZoom) * s;
-    const zoom = baseZoom - k1.flight.zoomDip * bell;
+    const zoom = Math.max(2.0, baseZoom - k1.flight.zoomDip * bell);
 
     const startPitch = k1.pitch;
     const targetPitch = k1.flight.targetPitch;
-    const pitch = startPitch + (targetPitch - startPitch) * s - 8 * bell;
+    const pitch = Math.max(0, startPitch + (targetPitch - startPitch) * s - 10 * bell);
 
     return {
       t,
