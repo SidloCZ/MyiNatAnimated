@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import { CameraKeyframe } from '../types/timeline';
+import { interpolateCamera } from './cameraDirector';
 
 export async function preloadMapTiles(
   keyframes: CameraKeyframe[],
@@ -46,15 +47,13 @@ export async function preloadMapTiles(
       }
     });
 
-    // Subsample keyframes to efficiently cover all viewports without redundant checks
+    // Sample camera trajectory evenly across time to preload all viewports and flight altitudes
     const sampledKeyframes: CameraKeyframe[] = [];
-    const step = Math.max(1, Math.floor(keyframes.length / 18));
-    for (let i = 0; i < keyframes.length; i += step) {
-      sampledKeyframes.push(keyframes[i]);
-    }
-    // Always include first and last keyframe
-    if (sampledKeyframes[sampledKeyframes.length - 1] !== keyframes[keyframes.length - 1]) {
-      sampledKeyframes.push(keyframes[keyframes.length - 1]);
+    const totalTime = keyframes[keyframes.length - 1].t;
+    const sampleCount = Math.min(20, Math.max(8, Math.round(totalTime / 1.5)));
+    for (let i = 0; i <= sampleCount; i++) {
+      const sampleT = (i / sampleCount) * totalTime;
+      sampledKeyframes.push(interpolateCamera(keyframes, sampleT));
     }
 
     const total = sampledKeyframes.length;

@@ -8,11 +8,11 @@ export interface CameraDirectorConfig {
 }
 
 export function calculateFlightDuration(distKm: number): number {
-  if (distKm < 25) return 0;
-  if (distKm < 70) return 1.8;
-  if (distKm < 200) return 2.6;
-  if (distKm < 500) return 3.2;
-  return 3.8; // Long distance or cross-country flights
+  if (distKm < 20) return 0;
+  if (distKm < 60) return 2.4;
+  if (distKm < 150) return 3.2;
+  if (distKm < 400) return 4.0;
+  return 4.6; // Long distance or cross-country flights
 }
 
 // Haversine distance in km between two [lng, lat] points
@@ -38,10 +38,10 @@ export function generateCameraKeyframes(
   config: CameraDirectorConfig = {}
 ): CameraKeyframe[] {
   const {
-    minZoom = 6.5,
+    minZoom = 6.0,
     maxZoom = 13.5,
-    zoomInRate = 0.08,
-    arcFlyDistanceKm = 40,
+    zoomInRate = 0.12,
+    arcFlyDistanceKm = 20,
   } = config;
 
   if (events.length === 0) {
@@ -51,32 +51,25 @@ export function generateCameraKeyframes(
     ];
   }
 
-  // Calculate overall bounds to set a sensible starting and ending view
-  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-  for (const ev of events) {
-    const [lng, lat] = ev.coordinates;
-    if (lng < minLng) minLng = lng;
-    if (lng > maxLng) maxLng = lng;
-    if (lat < minLat) minLat = lat;
-    if (lat > maxLat) maxLat = lat;
-  }
-
   const keyframes: CameraKeyframe[] = [];
 
-  // Initial keyframe: slightly pulled back on overall center
+  // Initial keyframe at t=0
+  const firstCoord = events[0].coordinates;
+  const initialZoom = Math.max(minZoom, 10.5);
+
   keyframes.push({
     t: 0,
-    center: [events[0].coordinates[0], events[0].coordinates[1]],
-    zoom: Math.max(minZoom, 8),
+    center: [firstCoord[0], firstCoord[1]],
+    zoom: initialZoom,
     pitch: 20,
     bearing: 0,
   });
 
-  let currentCenter: [number, number] = [events[0].coordinates[0], events[0].coordinates[1]];
-  let currentZoom = Math.max(minZoom, 8.5);
-  let timeInCurrentRegion = 0;
+  let currentCenter: [number, number] = [firstCoord[0], firstCoord[1]];
+  let currentZoom = initialZoom;
+  let lastKeyframeTime = 0;
 
-  // Window of recent points for weighted centroid
+  // Window of recent points for weighted centroid in local tracking
   const recentPoints: { coord: [number, number]; t: number }[] = [];
   const windowDurationSec = 3.5;
 
@@ -84,90 +77,90 @@ export function generateCameraKeyframes(
     const ev = events[i];
     const prevEv = i > 0 ? events[i - 1] : null;
 
-    // Prune old points from centroid window
-    while (recentPoints.length > 0 && ev.t - recentPoints[0].t > windowDurationSec) {
-      recentPoints.shift();
-    }
-    recentPoints.push({ coord: ev.coordinates, t: ev.t });
-
-    // Calculate weighted centroid of recent points
-    let weightSum = 0;
-    let sumLng = 0;
-    let sumLat = 0;
-    for (let p = 0; p < recentPoints.length; p++) {
-      const age = ev.t - recentPoints[p].t;
-      const weight = Math.exp(-age / 1.5);
-      sumLng += recentPoints[p].coord[0] * weight;
-      sumLat += recentPoints[p].coord[1] * weight;
-      weightSum += weight;
-    }
-    const targetCenter: [number, number] = [sumLng / weightSum, sumLat / weightSum];
-
-    // Check distance to previous location
     const distToPrev = prevEv ? calculateDistanceKm(prevEv.coordinates, ev.coordinates) : 0;
     const timeDelta = prevEv ? Math.max(0.01, ev.t - prevEv.t) : 0.5;
 
-    if (distToPrev > arcFlyDistanceKm) {
-      // Cinematic arc flight: smooth takeoff, accelerated cruise at high altitude, smooth landing
-      const flightDuration = Math.max(1.5, ev.t - (prevEv ? prevEv.t : ev.t - 2.0));
+    if (distToPrev >= arcFlyDistanceKm) {
+      // Long-distance transition: smooth cinematic arc flight
+      const flightDuration = Math.max(1.8, ev.t - (prevEv ? prevEv.t : ev.t - 2.0));
       const flightStart = ev.t - flightDuration;
 
       const startCenter: [number, number] = [currentCenter[0], currentCenter[1]];
       const startZoom = currentZoom;
-      const targetZoom = Math.min(maxZoom, Math.max(minZoom + 2.0, 9.8));
+      const targetCenter: [number, number] = [ev.coordinates[0], ev.coordinates[1]];
+      const targetZoom = Math.min(maxZoom, 11.5);
 
-      // Calculate how much we pull back zoom based on distance
+      // Smooth altitude pullback (gentle and majestic)
       const zoomDip = Math.min(
         startZoom - minZoom,
-        Math.max(2.2, Math.log2(distToPrev / 15) * 1.35)
+        Math.max(1.8, Math.log2(distToPrev / 15) * 1.1)
       );
 
-      // Intermediate steps using quintic smootherstep for position and parabolic curve for altitude
-      const uSteps = [0.15, 0.35, 0.50, 0.70, 0.88];
-      for (const u of uSteps) {
-        // Quintic smootherstep s(u) = 6u^5 - 15u^4 + 10u^3 (smooth acceleration & deceleration)
-        const s = u * u * u * (u * (u * 6 - 15) + 10);
+      // Record flight start with full flight parameters
+      keyframes.push({
+        t: flightStart,
+        center: startCenter,
+        zoom: startZoom,
+        pitch: 20,
+        bearing: 0,
+        flight: {
+          duration: flightDuration,
+          targetCenter,
+          targetZoom,
+          zoomDip,
+          targetPitch: 22,
+        },
+      });
 
-        const stepLng = startCenter[0] + (targetCenter[0] - startCenter[0]) * s;
-        const stepLat = startCenter[1] + (targetCenter[1] - startCenter[1]) * s;
+      // Record flight arrival
+      keyframes.push({
+        t: ev.t,
+        center: targetCenter,
+        zoom: targetZoom,
+        pitch: 22,
+        bearing: 0,
+      });
 
-        // Inverted parabolic zoom dip: 4 * u * (1 - u) is 1.0 at midpoint u=0.5
-        const stepZoom = startZoom + (targetZoom - startZoom) * s - zoomDip * (4 * u * (1 - u));
+      currentCenter = targetCenter;
+      currentZoom = targetZoom;
+      lastKeyframeTime = ev.t;
+      recentPoints.length = 0;
+      recentPoints.push({ coord: ev.coordinates, t: ev.t });
+    } else {
+      // Local cluster tracking: maintain weighted centroid and gently zoom in
+      while (recentPoints.length > 0 && ev.t - recentPoints[0].t > windowDurationSec) {
+        recentPoints.shift();
+      }
+      recentPoints.push({ coord: ev.coordinates, t: ev.t });
 
-        // Pitch flattens to 12 deg at peak altitude, then tilts back up on descent
-        const stepPitch = 24 - 12 * (4 * u * (1 - u));
+      let weightSum = 0;
+      let sumLng = 0;
+      let sumLat = 0;
+      for (let p = 0; p < recentPoints.length; p++) {
+        const age = ev.t - recentPoints[p].t;
+        const weight = Math.exp(-age / 1.5);
+        sumLng += recentPoints[p].coord[0] * weight;
+        sumLat += recentPoints[p].coord[1] * weight;
+        weightSum += weight;
+      }
+      currentCenter = [sumLng / weightSum, sumLat / weightSum];
+      currentZoom = Math.min(maxZoom, currentZoom + zoomInRate * timeDelta);
 
+      // Only emit keyframe if enough time passed, or if it's a highlight or last point
+      if (ev.t - lastKeyframeTime >= 0.35 || ev.isHighlight || i === events.length - 1) {
         keyframes.push({
-          t: flightStart + flightDuration * u,
-          center: [stepLng, stepLat],
-          zoom: Math.max(minZoom, stepZoom),
-          pitch: Math.max(10, stepPitch),
+          t: ev.t,
+          center: [currentCenter[0], currentCenter[1]],
+          zoom: currentZoom,
+          pitch: ev.isHighlight ? 28 : 22,
           bearing: 0,
         });
+        lastKeyframeTime = ev.t;
       }
-
-      // Reset dwell timer
-      timeInCurrentRegion = 0;
-      currentZoom = targetZoom;
-    } else {
-      // In same general area: increase dwell time and slowly zoom in
-      timeInCurrentRegion += timeDelta;
-      currentZoom = Math.min(maxZoom, currentZoom + zoomInRate * timeDelta);
     }
-
-    currentCenter = targetCenter;
-
-    // Add keyframe for observation
-    keyframes.push({
-      t: ev.t,
-      center: [currentCenter[0], currentCenter[1]],
-      zoom: currentZoom,
-      pitch: ev.isHighlight ? 35 : 25,
-      bearing: ev.isHighlight ? 10 : 0,
-    });
   }
 
-  // Final keyframe: stay on last center
+  // Outro hold
   keyframes.push({
     t: totalDuration + 0.5,
     center: currentCenter,
@@ -191,34 +184,97 @@ export function interpolateCamera(keyframes: CameraKeyframe[], t: number): Camer
     return keyframes[keyframes.length - 1];
   }
 
-  // Find surrounding keyframes
+  // Find surrounding keyframe index
   let idx = 0;
-  while (idx < keyframes.length - 1 && keyframes[idx + 1].t < t) {
+  while (idx < keyframes.length - 1 && keyframes[idx + 1].t <= t) {
     idx++;
   }
 
   const k1 = keyframes[idx];
   const k2 = keyframes[idx + 1];
 
-  const span = k2.t - k1.t;
-  const progress = span > 0 ? (t - k1.t) / span : 0;
+  // 1. Arc Flight mode: closed-form smootherstep + parabolic bell-curve (100% continuous, zero stepping)
+  if (k1.flight && k1.flight.duration > 0) {
+    const rawU = (t - k1.t) / k1.flight.duration;
+    const u = Math.max(0, Math.min(1, rawU));
 
-  // Smooth cubic ease-in-out
-  const ease = progress < 0.5
-    ? 4 * progress * progress * progress
-    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    // Ken Perlin's quintic smootherstep: 6u^5 - 15u^4 + 10u^3
+    const s = u * u * u * (u * (u * 6 - 15) + 10);
 
-  const lng = k1.center[0] + (k2.center[0] - k1.center[0]) * ease;
-  const lat = k1.center[1] + (k2.center[1] - k1.center[1]) * ease;
-  const zoom = k1.zoom + (k2.zoom - k1.zoom) * ease;
-  const pitch = k1.pitch + (k2.pitch - k1.pitch) * ease;
-  const bearing = k1.bearing + (k2.bearing - k1.bearing) * ease;
+    const startCenter = k1.center;
+    const targetCenter = k1.flight.targetCenter;
+    const lng = startCenter[0] + (targetCenter[0] - startCenter[0]) * s;
+    const lat = startCenter[1] + (targetCenter[1] - startCenter[1]) * s;
+
+    // Parabolic bell curve: 16 * u^2 * (1 - u)^2 = [4u(1-u)]^2
+    // Exactly 0 at u=0 and u=1 with zero slope; exactly 1.0 at midpoint u=0.5 with zero slope
+    const bell = Math.pow(4 * u * (1 - u), 2);
+
+    const startZoom = k1.zoom;
+    const targetZoom = k1.flight.targetZoom;
+    const baseZoom = startZoom + (targetZoom - startZoom) * s;
+    const zoom = baseZoom - k1.flight.zoomDip * bell;
+
+    const startPitch = k1.pitch;
+    const targetPitch = k1.flight.targetPitch;
+    const pitch = startPitch + (targetPitch - startPitch) * s - 8 * bell;
+
+    return {
+      t,
+      center: [lng, lat],
+      zoom,
+      pitch,
+      bearing: 0,
+    };
+  }
+
+  // 2. Local Tracking mode: Cubic Hermite Spline with Catmull-Rom tangents for continuous C1 motion
+  const h = k2.t - k1.t;
+  if (h <= 0.0001) {
+    return k1;
+  }
+  const u = (t - k1.t) / h;
+
+  // Tangents at k1
+  let v1Lng = 0, v1Lat = 0, v1Zoom = 0, v1Pitch = 0;
+  if (idx > 0 && !keyframes[idx - 1].flight) {
+    const dtPrev = k2.t - keyframes[idx - 1].t;
+    if (dtPrev > 0) {
+      v1Lng = (k2.center[0] - keyframes[idx - 1].center[0]) / dtPrev;
+      v1Lat = (k2.center[1] - keyframes[idx - 1].center[1]) / dtPrev;
+      v1Zoom = (k2.zoom - keyframes[idx - 1].zoom) / dtPrev;
+      v1Pitch = (k2.pitch - keyframes[idx - 1].pitch) / dtPrev;
+    }
+  }
+
+  // Tangents at k2
+  let v2Lng = 0, v2Lat = 0, v2Zoom = 0, v2Pitch = 0;
+  if (idx + 2 < keyframes.length && !k2.flight) {
+    const dtNext = keyframes[idx + 2].t - k1.t;
+    if (dtNext > 0) {
+      v2Lng = (keyframes[idx + 2].center[0] - k1.center[0]) / dtNext;
+      v2Lat = (keyframes[idx + 2].center[1] - k1.center[1]) / dtNext;
+      v2Zoom = (keyframes[idx + 2].zoom - k1.zoom) / dtNext;
+      v2Pitch = (keyframes[idx + 2].pitch - k1.pitch) / dtNext;
+    }
+  }
+
+  // Cubic Hermite basis functions
+  const h00 = (1 + 2 * u) * (1 - u) * (1 - u);
+  const h10 = u * (1 - u) * (1 - u);
+  const h01 = u * u * (3 - 2 * u);
+  const h11 = u * u * (u - 1);
+
+  const lng = h00 * k1.center[0] + h10 * h * v1Lng + h01 * k2.center[0] + h11 * h * v2Lng;
+  const lat = h00 * k1.center[1] + h10 * h * v1Lat + h01 * k2.center[1] + h11 * h * v2Lat;
+  const zoom = h00 * k1.zoom + h10 * h * v1Zoom + h01 * k2.zoom + h11 * h * v2Zoom;
+  const pitch = h00 * k1.pitch + h10 * h * v1Pitch + h01 * k2.pitch + h11 * h * v2Pitch;
 
   return {
     t,
     center: [lng, lat],
     zoom,
     pitch,
-    bearing,
+    bearing: 0,
   };
 }

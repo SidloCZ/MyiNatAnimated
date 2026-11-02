@@ -1,11 +1,20 @@
 import { InatObservation } from './inat';
 
+export interface CameraFlight {
+  duration: number; // Flight duration in seconds
+  targetCenter: [number, number]; // [lng, lat]
+  targetZoom: number;
+  zoomDip: number; // How many zoom levels camera pulls back at peak cruise altitude
+  targetPitch: number;
+}
+
 export interface CameraKeyframe {
   t: number; // Animation time in seconds
   center: [number, number]; // [lng, lat]
   zoom: number;
   pitch: number;
   bearing: number;
+  flight?: CameraFlight;
 }
 
 export interface ObsEvent {
