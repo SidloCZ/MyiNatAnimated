@@ -9,6 +9,10 @@ export interface PreloadedSprites {
 
 export function renderSvgToCanvasAsync(svgInner: string, fillColor: string, size = 64): Promise<HTMLCanvasElement> {
   return new Promise((resolve) => {
+    if (typeof document === 'undefined') {
+      resolve({ width: size, height: size } as unknown as HTMLCanvasElement);
+      return;
+    }
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -28,6 +32,39 @@ export function renderSvgToCanvasAsync(svgInner: string, fillColor: string, size
       resolve(canvas);
     };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(fullSvg);
+  });
+}
+
+/**
+ * Loads a photo with a multi-tier fallback:
+ * 1. Direct load with crossOrigin = 'anonymous' (works for AWS S3 Open Data, Unsplash, Flickr, etc.)
+ * 2. CORS-enabled proxy via images.weserv.nl with crossOrigin = 'anonymous' (provides CORS headers
+ *    for static.inaturalist.org so canvas is not tainted for MP4/GIF export)
+ * 3. Direct load without crossOrigin attribute (guarantees image display in player canvas even if offline/proxy unreachable)
+ */
+export function loadPhotoWithFallback(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    // 1. Try direct with crossOrigin
+    const directCors = new Image();
+    directCors.crossOrigin = 'anonymous';
+    directCors.onload = () => resolve(directCors);
+    directCors.onerror = () => {
+      // 2. Try proxy with crossOrigin for clean canvas export
+      const cleanUrl = url.replace(/^https?:\/\//, '');
+      const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&w=800`;
+      const proxyImg = new Image();
+      proxyImg.crossOrigin = 'anonymous';
+      proxyImg.onload = () => resolve(proxyImg);
+      proxyImg.onerror = () => {
+        // 3. Fallback to direct without crossOrigin attribute (always renders in player)
+        const directImg = new Image();
+        directImg.onload = () => resolve(directImg);
+        directImg.onerror = (e) => reject(e);
+        directImg.src = url;
+      };
+      proxyImg.src = proxyUrl;
+    };
+    directCors.src = url;
   });
 }
 
@@ -58,24 +95,20 @@ export async function preloadSprites(
   }
 
   await Promise.all(
-    photoUrls.map(({ id, url }) => {
-      return new Promise<void>((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
+    photoUrls.map(async ({ id, url }) => {
+      try {
+        const img = await loadPhotoWithFallback(url);
+        if (img) {
           photoMap.set(id, img);
-          loaded++;
-          if (onProgress && total > 0) onProgress(loaded / total);
-          resolve();
-        };
-        img.onerror = () => {
-          // If fails to load photo, proceed gracefully
-          loaded++;
-          if (onProgress && total > 0) onProgress(loaded / total);
-          resolve();
-        };
-        img.src = url;
-      });
+        }
+      } catch {
+        // Gracefully ignore failed images
+      } finally {
+        loaded++;
+        if (onProgress && total > 0) {
+          onProgress(loaded / total);
+        }
+      }
     })
   );
 

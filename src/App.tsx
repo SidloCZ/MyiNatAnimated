@@ -6,7 +6,7 @@ import { pickSuggestedHighlights } from './services/highlightScorer';
 import { buildTimeline } from './engine/timelineBuilder';
 import { preloadMapTiles } from './engine/tilePreloader';
 import { getTaxonVisuals } from './assets/icons/taxaIcons';
-import { isObservationObscured } from './services/inatApi';
+import { isObservationObscured, getObservationPhotoUrl } from './services/inatApi';
 import { findIsolatedObservationIds, filterIsolatedObservations } from './services/spatialFilter';
 import { SearchForm } from './components/SearchForm';
 import { HighlightPicker } from './components/HighlightPicker';
@@ -181,11 +181,12 @@ const handleStartPreparation = async () => {
   ];
 
   const photosToLoad = tl.events
-    .filter(ev => ev.isHighlight && ev.observation.photos?.[0])
+    .filter(ev => ev.isHighlight)
     .map(ev => ({
       id: ev.id,
-      url: ev.observation.photos[0].medium_url || ev.observation.photos[0].url,
-    }));
+      url: getObservationPhotoUrl(ev.observation, 'medium'),
+    }))
+    .filter((p): p is { id: number; url: string } => typeof p.url === 'string' && p.url.length > 0);
 
   setPrepareStatus('Přednačítání fotografií vybraných highlightů…');
   const loadedSprites = await preloadSprites(visualsList, photosToLoad, (p) => {

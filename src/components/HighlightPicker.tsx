@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, MessageSquare, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { InatObservation, HighlightItem } from '../types/inat';
+import { getObservationPhotoUrl } from '../services/inatApi';
 
 interface HighlightPickerProps {
   observations: InatObservation[];
@@ -69,7 +70,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8 max-h-[58vh] overflow-y-auto pr-1">
         {suggestedHighlights.map(({ observation, score }) => {
           const isSelected = selectedIds.has(observation.id);
-          const photoUrl = observation.photos?.[0]?.medium_url || observation.photos?.[0]?.url;
+          const photoUrl = getObservationPhotoUrl(observation, 'medium');
           const commonName = observation.taxon?.preferred_common_name || observation.taxon?.name || 'Pozorování';
           const latinName = observation.taxon?.name;
 

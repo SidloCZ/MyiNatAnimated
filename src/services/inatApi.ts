@@ -4,6 +4,56 @@ import { getCachedObservations, setCachedObservations } from './cache';
 
 const INAT_API_BASE = 'https://api.inaturalist.org/v1';
 
+/**
+ * Resolves an iNaturalist photo URL to the requested size (default 'medium').
+ * Automatically transforms standard iNaturalist /square. URLs to /medium., /large., etc.
+ */
+export function getInatPhotoUrl(
+  photoOrUrl?: { url?: string; medium_url?: string } | string | null,
+  size: 'square' | 'small' | 'medium' | 'large' | 'original' = 'medium'
+): string | undefined {
+  if (!photoOrUrl) return undefined;
+
+  let rawUrl: string | undefined;
+  if (typeof photoOrUrl === 'string') {
+    rawUrl = photoOrUrl;
+  } else {
+    if (size === 'medium' && photoOrUrl.medium_url) {
+      return photoOrUrl.medium_url;
+    }
+    rawUrl = photoOrUrl.url || photoOrUrl.medium_url;
+  }
+
+  if (!rawUrl) return undefined;
+
+  // Replace iNaturalist size token (/square., /small., /medium., /large., /original.)
+  const inatPattern = /\/(square|small|medium|large|original)\.([a-zA-Z0-9]+)(\?.*)?$/i;
+  if (inatPattern.test(rawUrl)) {
+    return rawUrl.replace(inatPattern, `/${size}.$2$3`);
+  }
+
+  return rawUrl;
+}
+
+/**
+ * Returns the best photo URL for an observation in the specified quality size.
+ * Tries the observation's first photo, then falls back to the taxon default photo.
+ */
+export function getObservationPhotoUrl(
+  obs: InatObservation,
+  size: 'square' | 'small' | 'medium' | 'large' | 'original' = 'medium'
+): string | undefined {
+  if (obs.photos && obs.photos.length > 0 && obs.photos[0]) {
+    const photoUrl = getInatPhotoUrl(obs.photos[0], size);
+    if (photoUrl) return photoUrl;
+  }
+  if (obs.taxon?.default_photo) {
+    const taxonPhotoUrl = getInatPhotoUrl(obs.taxon.default_photo, size);
+    if (taxonPhotoUrl) return taxonPhotoUrl;
+  }
+  return undefined;
+}
+
 export function isObservationObscured(obs: InatObservation): boolean {
   if (obs.obscured === true) return true;
   if (obs.geoprivacy === 'obscured' || obs.geoprivacy === 'private') return true;

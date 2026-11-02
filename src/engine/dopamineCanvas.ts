@@ -211,11 +211,13 @@ function drawHighlightCard(
   const photoY = cardY + 12;
 
   const photoImg = sprites?.photos.get(event.id);
-  if (photoImg) {
+  const hasPhoto = !!photoImg && (photoImg.naturalWidth > 0 || photoImg.width > 0);
+
+  if (hasPhoto && photoImg) {
     ctx.save();
     roundRect(ctx, photoX, photoY, photoSize, photoSize, 10);
     ctx.clip();
-    ctx.drawImage(photoImg, photoX, photoY, photoSize, photoSize);
+    drawImageCover(ctx, photoImg, photoX, photoY, photoSize, photoSize);
     ctx.restore();
   } else {
     // Fallback colored taxon box
@@ -291,5 +293,38 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
     truncated = truncated.slice(0, -1);
   }
   return truncated + '…';
+}
+
+function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const imgW = img.naturalWidth || img.width;
+  const imgH = img.naturalHeight || img.height;
+  if (!imgW || !imgH) {
+    ctx.drawImage(img, x, y, w, h);
+    return;
+  }
+  const imgRatio = imgW / imgH;
+  const targetRatio = w / h;
+
+  let sx = 0;
+  let sy = 0;
+  let sw = imgW;
+  let sh = imgH;
+
+  if (imgRatio > targetRatio) {
+    sw = imgH * targetRatio;
+    sx = (imgW - sw) / 2;
+  } else {
+    sh = imgW / targetRatio;
+    sy = (imgH - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
