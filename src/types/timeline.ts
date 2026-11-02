@@ -29,6 +29,9 @@ export interface ObsEvent {
   commentsCount: number;
   isHighlight: boolean;
   shouldFlyIcon?: boolean;
+  cumObsCount?: number;
+  cumSpeciesCount?: number;
+  dateStr?: string;
 }
 
 export interface SoundCue {

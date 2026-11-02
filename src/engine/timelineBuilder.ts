@@ -214,7 +214,19 @@ export function buildTimeline(
 
       const finalDuration = currentAnimTime + 2.0; // 2s outro hold
 
-      // 3. Generate smooth camera keyframes
+      // 3. Precompute cumulative counts and date for O(log N) live playback querying
+      const seenSpecies = new Set<string>();
+      for (let i = 0; i < events.length; i++) {
+        const ev = events[i];
+        if (ev.observation.taxon?.name) {
+          seenSpecies.add(ev.observation.taxon.name);
+        }
+        ev.cumObsCount = i + 1;
+        ev.cumSpeciesCount = seenSpecies.size;
+        ev.dateStr = ev.observation.observed_on || ev.observation.time_observed_at || ev.observation.created_at || '';
+      }
+
+      // 4. Generate smooth camera keyframes
       const cameraKeyframes = generateCameraKeyframes(events, finalDuration);
 
       return {
@@ -225,7 +237,7 @@ export function buildTimeline(
         cameraKeyframes,
         soundCues,
         stats: {
-          totalObservations: observations.length,
+          totalObservations: effectiveObservations.length,
           totalSpecies: speciesSet.size,
           totalPhotos,
           totalFaves,
@@ -233,4 +245,81 @@ export function buildTimeline(
         }
       };
     }
+
+/**
+ * Binary search to find live playback statistics (observation count, species count, date)
+ * at any animation time t in O(log N).
+ */
+export function getPlaybackStatsAtTime(
+  events: ObsEvent[],
+  t: number
+): { obsCount: number; speciesCount: number; dateStr: string } {
+  if (events.length === 0) {
+    return { obsCount: 0, speciesCount: 0, dateStr: '' };
+  }
+
+  if (t < events[0].t) {
+    return {
+      obsCount: 0,
+      speciesCount: 0,
+      dateStr: events[0].dateStr || events[0].observation.observed_on || '',
+    };
+  }
+
+  const last = events[events.length - 1];
+  if (t >= last.t) {
+    return {
+      obsCount: last.cumObsCount || events.length,
+      speciesCount: last.cumSpeciesCount || 0,
+      dateStr: last.dateStr || last.observation.observed_on || '',
+    };
+  }
+
+  let low = 0;
+  let high = events.length - 1;
+  let best = 0;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1;
+    if (events[mid].t <= t) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  const ev = events[best];
+  return {
+    obsCount: ev.cumObsCount || (best + 1),
+    speciesCount: ev.cumSpeciesCount || 0,
+    dateStr: ev.dateStr || ev.observation.observed_on || '',
+  };
+}
+
+/**
+ * Formats an ISO / YYYY-MM-DD date string into Czech microtypographic format (e.g. 15. 5. 2024).
+ * Uses regex extraction to prevent UTC/local timezone day shifts.
+ */
+export function formatCzechDate(dateStr?: string): string {
+  if (!dateStr) return '';
+
+  const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    return `${day}.\u00A0${month}.\u00A0${year}`;
+  }
+
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    return `${day}.\u00A0${month}.\u00A0${year}`;
+  }
+
+  return dateStr;
+}
 

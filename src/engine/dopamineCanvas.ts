@@ -1,5 +1,6 @@
 import { TimelineData, ObsEvent } from '../types/timeline';
 import { PreloadedSprites } from './spriteAtlas';
+import { getPlaybackStatsAtTime, formatCzechDate } from './timelineBuilder';
 
 export interface DopamineRenderOptions {
   ctx: CanvasRenderingContext2D;
@@ -9,6 +10,7 @@ export interface DopamineRenderOptions {
   t: number;
   project: (coord: [number, number]) => { x: number; y: number };
   sprites?: PreloadedSprites;
+  isExport?: boolean;
 }
 
 export function renderDopamineFrame(options: DopamineRenderOptions) {
@@ -165,6 +167,64 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
   if (activeHighlight) {
     drawHighlightCard(ctx, width, height, activeHighlight, activeHighlightProgress, sprites);
   }
+
+  // 7. Embedded HUD on export (date ticker and dynamic observation/species counters)
+  if (options.isExport) {
+    const stats = getPlaybackStatsAtTime(timeline.events, t);
+    drawExportHud(ctx, width, height, stats.dateStr, stats.obsCount, timeline.stats.totalObservations, stats.speciesCount);
+  }
+}
+
+function drawExportHud(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  _height: number,
+  dateStr: string,
+  obsCount: number,
+  totalObs: number,
+  speciesCount: number
+) {
+  const padX = 24;
+  const padY = 24;
+  const formattedDate = formatCzechDate(dateStr);
+
+  ctx.save();
+  const hudW = Math.min(320, width - 48);
+  const hudH = 58;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 1.5;
+
+  roundRect(ctx, padX, padY, hudW, hudH, 12);
+  ctx.fill();
+  ctx.stroke();
+
+  // Date
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText(formattedDate || 'iNaturalist', padX + 16, padY + 26);
+
+  // Live counters below
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText('Pozorování:', padX + 16, padY + 46);
+
+  ctx.fillStyle = '#34d399';
+  ctx.font = 'bold 12px monospace';
+  const obsText = `${obsCount} / ${totalObs}`;
+  ctx.fillText(obsText, padX + 90, padY + 46);
+
+  const obsTextWidth = ctx.measureText(obsText).width;
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillText('Druhy:', padX + 102 + obsTextWidth, padY + 46);
+
+  ctx.fillStyle = '#22d3ee';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(`${speciesCount}`, padX + 146 + obsTextWidth, padY + 46);
+
+  ctx.restore();
 }
 
 function drawHighlightCard(

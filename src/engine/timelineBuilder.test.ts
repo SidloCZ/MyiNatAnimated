@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTimeline } from './timelineBuilder';
+import { buildTimeline, getPlaybackStatsAtTime, formatCzechDate } from './timelineBuilder';
 import { InatObservation } from '../types/inat';
 
 describe('timelineBuilder', () => {
@@ -87,6 +87,39 @@ describe('timelineBuilder', () => {
     const tlFiltered = buildTimeline(list, { filterIsolated: true });
     expect(tlFiltered.events).toHaveLength(10);
     expect(tlFiltered.events.some(e => e.id === 99)).toBe(false);
+  });
+
+  it('correctly increments live observation and species counts and formats dates', () => {
+    const obs1 = createMockObs(1, '2024-05-01', '2024-05-01', 'Formica rufa');
+    const obs2 = createMockObs(2, '2024-05-05', '2024-05-05', 'Formica rufa'); // same species
+    const obs3 = createMockObs(3, '2024-05-10', '2024-05-10', 'Lucanus cervus'); // new species
+
+    const tl = buildTimeline([obs1, obs2, obs3], { targetDurationSeconds: 10 });
+    expect(tl.events).toHaveLength(3);
+
+    // Before any event triggers
+    const stats0 = getPlaybackStatsAtTime(tl.events, 0);
+    expect(stats0.obsCount).toBe(0);
+    expect(stats0.speciesCount).toBe(0);
+    expect(formatCzechDate(stats0.dateStr)).toBe('1.\u00A05.\u00A02024');
+
+    // At event 1 time
+    const stats1 = getPlaybackStatsAtTime(tl.events, tl.events[0].t);
+    expect(stats1.obsCount).toBe(1);
+    expect(stats1.speciesCount).toBe(1);
+    expect(formatCzechDate(stats1.dateStr)).toBe('1.\u00A05.\u00A02024');
+
+    // At event 2 time (same species -> speciesCount stays 1, obsCount is 2)
+    const stats2 = getPlaybackStatsAtTime(tl.events, tl.events[1].t);
+    expect(stats2.obsCount).toBe(2);
+    expect(stats2.speciesCount).toBe(1);
+    expect(formatCzechDate(stats2.dateStr)).toBe('5.\u00A05.\u00A02024');
+
+    // At event 3 time (second species -> speciesCount is 2, obsCount is 3)
+    const stats3 = getPlaybackStatsAtTime(tl.events, tl.events[2].t);
+    expect(stats3.obsCount).toBe(3);
+    expect(stats3.speciesCount).toBe(2);
+    expect(formatCzechDate(stats3.dateStr)).toBe('10.\u00A05.\u00A02024');
   });
 });
 

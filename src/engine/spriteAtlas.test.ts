@@ -46,3 +46,4 @@ describe('spriteAtlas photo loading', () => {
     expect(progressVal).toBe(1);
   });
 });
+

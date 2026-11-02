@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
@@ -12,12 +12,14 @@ import {
   Minimize2,
   ArrowLeft,
   Map as MapIcon,
+  Calendar,
 } from 'lucide-react';
 import { TimelineData } from '../types/timeline';
 import { PreloadedSprites } from '../engine/spriteAtlas';
 import { interpolateCamera } from '../engine/cameraDirector';
 import { warmupMapTiles, waitForMapIdle } from '../engine/tilePreloader';
 import { renderDopamineFrame } from '../engine/dopamineCanvas';
+import { getPlaybackStatsAtTime, formatCzechDate } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
 import { VideoAspectRatio, ExportProgress, ExportConfig } from '../types/export';
@@ -88,6 +90,11 @@ export const Player: React.FC<PlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapStyleKey, setMapStyleKey] = useState<MapStyleKey>('dark');
+
+  // Dynamic live playback stats (date, live observation count, live species count)
+  const currentStats = useMemo(() => {
+    return getPlaybackStatsAtTime(timeline.events, currentTime);
+  }, [timeline.events, currentTime]);
 
   // Export modal state
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -383,6 +390,7 @@ export const Player: React.FC<PlayerProps> = ({
         return { x: p.x * scaleX, y: p.y * scaleY };
       },
       sprites,
+      isExport: true,
     });
   };
 
@@ -522,7 +530,7 @@ export const Player: React.FC<PlayerProps> = ({
         )}
 
         {/* Top Header Overlay Bar */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10 gap-2">
           <div className="flex items-center gap-2 pointer-events-auto">
             <button
               type="button"
@@ -532,11 +540,21 @@ export const Player: React.FC<PlayerProps> = ({
               <ArrowLeft className="w-3.5 h-3.5" />
               Zpět
             </button>
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs text-slate-300 font-medium">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs text-slate-300 font-medium hidden sm:block">
               <span className="text-slate-500">Uživatel:</span>{' '}
               <span className="text-white font-semibold">{username}</span>
             </div>
           </div>
+
+          {/* Center Date Indicator */}
+          {currentStats.dateStr && (
+            <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 shadow-lg shadow-emerald-500/10 backdrop-blur-md">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs sm:text-sm font-bold text-white tracking-wide font-mono">
+                {formatCzechDate(currentStats.dateStr)}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 pointer-events-auto">
             <div className="relative flex items-center">
@@ -553,17 +571,21 @@ export const Player: React.FC<PlayerProps> = ({
               </select>
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs">
-              <div className="text-slate-400">
-                Pozorování:{' '}
-                <span className="text-emerald-400 font-semibold font-mono">
-                  {timeline.stats.totalObservations}
+            {/* Dynamic observation and species counters */}
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs">
+              <div className="text-slate-400 flex items-center gap-1">
+                <span className="hidden sm:inline">Pozorování:</span>
+                <span className="text-emerald-400 font-bold font-mono text-xs sm:text-sm">
+                  {currentStats.obsCount}
+                </span>
+                <span className="text-slate-600 font-mono text-[10px]">
+                  /&nbsp;{timeline.stats.totalObservations}
                 </span>
               </div>
-              <div className="text-slate-400">
-                Druhy:{' '}
-                <span className="text-cyan-400 font-semibold font-mono">
-                  {timeline.stats.totalSpecies}
+              <div className="text-slate-400 flex items-center gap-1">
+                <span className="hidden sm:inline">Druhy:</span>
+                <span className="text-cyan-400 font-bold font-mono text-xs sm:text-sm">
+                  {currentStats.speciesCount}
                 </span>
               </div>
             </div>
@@ -574,7 +596,7 @@ export const Player: React.FC<PlayerProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-lg shadow-emerald-500/20 transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              Exportovat
+              <span className="hidden sm:inline">Exportovat</span>
             </button>
           </div>
         </div>
