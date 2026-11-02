@@ -1,7 +1,7 @@
 import { InatObservation } from '../types/inat';
 import { TimelineData, ObsEvent, SoundCue } from '../types/timeline';
 import { getTaxonVisuals } from '../assets/icons/taxaIcons';
-import { generateCameraKeyframes, calculateDistanceKm } from './cameraDirector';
+import { generateCameraKeyframes, calculateDistanceKm, calculateFlightDuration } from './cameraDirector';
 
 export interface TimelineBuilderOptions {
   targetDurationSeconds?: number;
@@ -93,97 +93,99 @@ export function buildTimeline(
     const coords: [number, number] = obs.geojson?.coordinates || [15.47, 49.81];
     const visuals = getTaxonVisuals(obs.taxon?.iconic_taxon_name, obs.taxon);
 
-    // If large jump across distance, leave time for camera flight
+    // If distant jump, allocate smooth flight time and schedule whoosh sound
     if (prev && prev.obs.geojson?.coordinates) {
       const dist = calculateDistanceKm(prev.obs.geojson.coordinates, coords);
-      if (dist > 40) {
-        currentAnimTime += 0.8;
-        soundCues.push({
-          t: currentAnimTime - 0.5,
-          type: 'whoosh',
-          gain: 0.25,
-        });
+        const flightDuration = calculateFlightDuration(dist);
+        if (flightDuration > 0) {
+          currentAnimTime += flightDuration;
+          // Whoosh sound plays at peak cruise altitude / midpoint
+          soundCues.push({
+            t: currentAnimTime - flightDuration * 0.5,
+            type: 'whoosh',
+            gain: 0.3,
+          });
+        }
       }
-    }
 
-    const eventTime = currentAnimTime;
+      const eventTime = currentAnimTime;
 
-    events.push({
-      id: obs.id,
-      t: eventTime,
-      observation: obs,
-      coordinates: coords,
-      iconicTaxon: obs.taxon?.iconic_taxon_name || 'unknown',
-      orderName: obs.taxon?.rank === 'order' ? obs.taxon.name : undefined,
-      color: visuals.color,
-      favesCount: obs.faves_count || 0,
-      commentsCount: obs.comments_count || 0,
-      isHighlight,
-    });
-
-    // Sound cues
-    if (isHighlight) {
-      soundCues.push({
+      events.push({
+        id: obs.id,
         t: eventTime,
-        type: 'highlight',
-        gain: 0.6,
+        observation: obs,
+        coordinates: coords,
+        iconicTaxon: obs.taxon?.iconic_taxon_name || 'unknown',
+        orderName: obs.taxon?.rank === 'order' ? obs.taxon.name : undefined,
+        color: visuals.color,
+        favesCount: obs.faves_count || 0,
+        commentsCount: obs.comments_count || 0,
+        isHighlight,
       });
-      currentAnimTime += highlightPauseSeconds;
-    } else {
-      if (eventTime - lastSoundTime >= minSoundInterval) {
-        const pitchIndex = (i * 2 + (obs.faves_count || 0)) % PENTATONIC_SCALE.length;
+
+      // Sound cues
+      if (isHighlight) {
         soundCues.push({
           t: eventTime,
-          type: 'pop',
-          pitchFrequency: PENTATONIC_SCALE[pitchIndex],
-          gain: 0.35,
+          type: 'highlight',
+          gain: 0.6,
         });
-        lastSoundTime = eventTime;
-      }
+        currentAnimTime += highlightPauseSeconds;
+      } else {
+        if (eventTime - lastSoundTime >= minSoundInterval) {
+          const pitchIndex = (i * 2 + (obs.faves_count || 0)) % PENTATONIC_SCALE.length;
+          soundCues.push({
+            t: eventTime,
+            type: 'pop',
+            pitchFrequency: PENTATONIC_SCALE[pitchIndex],
+            gain: 0.35,
+          });
+          lastSoundTime = eventTime;
+        }
 
-      // If observation has likes, trigger star sound
-      if ((obs.faves_count || 0) > 0) {
-        soundCues.push({
-          t: eventTime + 0.12,
-          type: 'star',
-          pitchFrequency: 880,
-          gain: 0.2,
-        });
-      }
+        // If observation has likes, trigger star sound
+        if ((obs.faves_count || 0) > 0) {
+          soundCues.push({
+            t: eventTime + 0.12,
+            type: 'star',
+            pitchFrequency: 880,
+            gain: 0.2,
+          });
+        }
 
-      // If observation has comments, trigger bubble sound
-      if ((obs.comments_count || 0) > 0) {
-        soundCues.push({
-          t: eventTime + 0.18,
-          type: 'bubble',
-          pitchFrequency: 440,
-          gain: 0.25,
-        });
-      }
+        // If observation has comments, trigger bubble sound
+        if ((obs.comments_count || 0) > 0) {
+          soundCues.push({
+            t: eventTime + 0.18,
+            type: 'bubble',
+            pitchFrequency: 440,
+            gain: 0.25,
+          });
+        }
 
-      currentAnimTime += actualStep;
+        currentAnimTime += actualStep;
+      }
     }
+
+    const finalDuration = currentAnimTime + 2.0; // 2s outro hold
+
+    // 3. Generate smooth camera keyframes
+    const cameraKeyframes = generateCameraKeyframes(events, finalDuration);
+
+    return {
+      duration: finalDuration,
+      realStartDate,
+      realEndDate,
+      events,
+      cameraKeyframes,
+      soundCues,
+      stats: {
+        totalObservations: observations.length,
+        totalSpecies: speciesSet.size,
+        totalPhotos,
+        totalFaves,
+        totalComments,
+      }
+    };
   }
-
-  const finalDuration = currentAnimTime + 2.0; // 2s outro hold
-
-  // 3. Generate smooth camera keyframes
-  const cameraKeyframes = generateCameraKeyframes(events, finalDuration);
-
-  return {
-    duration: finalDuration,
-    realStartDate,
-    realEndDate,
-    events,
-    cameraKeyframes,
-    soundCues,
-    stats: {
-      totalObservations: observations.length,
-      totalSpecies: speciesSet.size,
-      totalPhotos,
-      totalFaves,
-      totalComments,
-    }
-  };
-}
 

@@ -27,7 +27,8 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
   - `src/types/` – Datové typy a rozhraní (iNat API entity, nastavení kamery, stav přehrávání, konfigurace exportu).
 - **Specifická pravidla pro data, audio a stav:**
   - **Bezserverový běh:** Aplikace běží kompletně v prohlížeči bez vlastního backendu; veškeré požadavky jdou přímo na oficiální iNaturalist API v1.
-  - **Ohleduplnost k API:** Dodržovat doporučené limity iNaturalist API (max. 1 požadavek za sekundu, specifikovaný User-Agent).
+  - **Ohleduplnost k API:** Dodržovat doporučené limity iNaturalist API (max. 1 požadavek za sekundu, šetrné chování).
+  - **Mapové podklady bez vodoznaků:** Používat bezplatné vektorové mapové podklady bez nutnosti API klíčů (např. OpenFreeMap Dark `https://tiles.openfreemap.org/styles/dark`, Fiord nebo OpenStreetMap), případně umožnit uživateli zadat vlastní volitelný API klíč. V mapě se nesmí zobrazovat vodoznaky vyžadující klíč.
   - **Deterministický export:** Export do MP4 a GIF musí umožňovat snímkování v pevných časových krocích nezávisle na výkonu procesoru pro stabilní výstup bez záseků.
   - **Zákaz emoji a dodržování taxonomie:** Striktní dodržování ČÁSTI II (výhradně SVG ikony) a ČÁSTI III (kurzíva pro rody a druhy, bez CSS capitalize).
 - **Deployment pravidla:**
@@ -60,6 +61,8 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
 - **Nativní IDE nástroje:**
   - K vyhledávání, čtení a inspekci souborů používej nativní workspace nástroje (file search, read_file, grep).
   - Nepoužívej terminálové zkratky typu `node -e` ani ad-hoc bash skripty pro inspekci souborů.
+- **Zabezpečení a citlivá data (.gitignore):**
+  - Do `.gitignore` vždy striktně zahrnout veškerá citlivá a privátní data (API klíče, soubory `.env*`, privátní certifikáty, tokeny, lokální nastavení a tajné přístupy), aby se žádné privátní údaje nikdy nedostaly do repozitáře.
 - **Commit message (Conventional Commits):**
   - Na konci každé zprávy v chatu připrav výstižný návrh commit zprávy v angličtině podle konvence (`feat(...)`, `fix(...)`, `chore(...)`, `docs(...)`, `refactor(...)`, `style(...)`).
   - Vypiš **pouze čistý text zprávy** bez balení do `git commit -m` a bez uvozovek.

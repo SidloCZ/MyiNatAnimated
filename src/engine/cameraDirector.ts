@@ -7,6 +7,14 @@ export interface CameraDirectorConfig {
   arcFlyDistanceKm?: number; // Threshold distance for pulling back during long transitions
 }
 
+export function calculateFlightDuration(distKm: number): number {
+  if (distKm < 25) return 0;
+  if (distKm < 70) return 1.8;
+  if (distKm < 200) return 2.6;
+  if (distKm < 500) return 3.2;
+  return 3.8; // Long distance or cross-country flights
+}
+
 // Haversine distance in km between two [lng, lat] points
 export function calculateDistanceKm(coord1: [number, number], coord2: [number, number]): number {
   const [lng1, lat1] = coord1;
@@ -17,9 +25,9 @@ export function calculateDistanceKm(coord1: [number, number], coord2: [number, n
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -100,25 +108,47 @@ export function generateCameraKeyframes(
     const timeDelta = prevEv ? Math.max(0.01, ev.t - prevEv.t) : 0.5;
 
     if (distToPrev > arcFlyDistanceKm) {
-      // Large jump: arc flyover (zoom out, fly across, zoom back in)
-      const midTime = prevEv ? prevEv.t + timeDelta * 0.45 : ev.t - 0.5;
-      const midCoord: [number, number] = [
-        (currentCenter[0] + targetCenter[0]) / 2,
-        (currentCenter[1] + targetCenter[1]) / 2,
-      ];
-      const pulledZoom = Math.max(minZoom, Math.min(currentZoom - 2.5, 7.5));
+      // Cinematic arc flight: smooth takeoff, accelerated cruise at high altitude, smooth landing
+      const flightDuration = Math.max(1.5, ev.t - (prevEv ? prevEv.t : ev.t - 2.0));
+      const flightStart = ev.t - flightDuration;
 
-      keyframes.push({
-        t: Math.max(0, midTime),
-        center: midCoord,
-        zoom: pulledZoom,
-        pitch: 15,
-        bearing: -5,
-      });
+      const startCenter: [number, number] = [currentCenter[0], currentCenter[1]];
+      const startZoom = currentZoom;
+      const targetZoom = Math.min(maxZoom, Math.max(minZoom + 2.0, 9.8));
+
+      // Calculate how much we pull back zoom based on distance
+      const zoomDip = Math.min(
+        startZoom - minZoom,
+        Math.max(2.2, Math.log2(distToPrev / 15) * 1.35)
+      );
+
+      // Intermediate steps using quintic smootherstep for position and parabolic curve for altitude
+      const uSteps = [0.15, 0.35, 0.50, 0.70, 0.88];
+      for (const u of uSteps) {
+        // Quintic smootherstep s(u) = 6u^5 - 15u^4 + 10u^3 (smooth acceleration & deceleration)
+        const s = u * u * u * (u * (u * 6 - 15) + 10);
+
+        const stepLng = startCenter[0] + (targetCenter[0] - startCenter[0]) * s;
+        const stepLat = startCenter[1] + (targetCenter[1] - startCenter[1]) * s;
+
+        // Inverted parabolic zoom dip: 4 * u * (1 - u) is 1.0 at midpoint u=0.5
+        const stepZoom = startZoom + (targetZoom - startZoom) * s - zoomDip * (4 * u * (1 - u));
+
+        // Pitch flattens to 12 deg at peak altitude, then tilts back up on descent
+        const stepPitch = 24 - 12 * (4 * u * (1 - u));
+
+        keyframes.push({
+          t: flightStart + flightDuration * u,
+          center: [stepLng, stepLat],
+          zoom: Math.max(minZoom, stepZoom),
+          pitch: Math.max(10, stepPitch),
+          bearing: 0,
+        });
+      }
 
       // Reset dwell timer
       timeInCurrentRegion = 0;
-      currentZoom = 9.0;
+      currentZoom = targetZoom;
     } else {
       // In same general area: increase dwell time and slowly zoom in
       timeInCurrentRegion += timeDelta;

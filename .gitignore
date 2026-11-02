@@ -1,6 +1,42 @@
-node_modules
-dist
-dist-ssr
+# Závislosti a buildy
+node_modules/
+dist/
+dist-ssr/
 *.local
-.DS_Store
 
+# Citlivá data, environment proměnné a tajné klíče
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+*secret*
+*apikey*
+*credentials*
+*token*
+
+# Logy a dočasné soubory
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.turbo/
+.cache/
+
+# IDE a operační systémy
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db

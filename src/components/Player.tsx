@@ -11,6 +11,7 @@ import {
   Maximize2,
   Minimize2,
   ArrowLeft,
+  Map as MapIcon,
 } from 'lucide-react';
 import { TimelineData } from '../types/timeline';
 import { PreloadedSprites } from '../engine/spriteAtlas';
@@ -29,31 +30,41 @@ interface PlayerProps {
   onBack: () => void;
 }
 
-const CARTO_DARK_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    'carto-dark': {
-      type: 'raster',
-      tiles: [
-        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-      ],
-      tileSize: 256,
-      attribution: '© OpenStreetMap, © CARTO',
-    },
-  },
-  layers: [
-    {
-      id: 'carto-dark-layer',
-      type: 'raster',
-      source: 'carto-dark',
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
-};
+export type MapStyleKey = 'dark' | 'liberty' | 'osm';
+
+      export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | maplibregl.StyleSpecification }> = {
+        dark: {
+          label: 'Tmavá (OpenFreeMap)',
+          style: 'https://tiles.openfreemap.org/styles/dark',
+        },
+        liberty: {
+          label: 'Barevná (OpenFreeMap)',
+          style: 'https://tiles.openfreemap.org/styles/liberty',
+        },
+        osm: {
+          label: 'OpenStreetMap',
+          style: {
+            version: 8,
+            sources: {
+              'osm-raster': {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: '© OpenStreetMap contributors',
+              },
+            },
+            layers: [
+              {
+                id: 'osm-raster-layer',
+                type: 'raster',
+                source: 'osm-raster',
+                minzoom: 0,
+                maxzoom: 19,
+              },
+            ],
+          },
+        },
+      };
 
 export const Player: React.FC<PlayerProps> = ({
   timeline,
@@ -70,6 +81,7 @@ export const Player: React.FC<PlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mapStyleKey, setMapStyleKey] = useState<MapStyleKey>('dark');
 
   // Export modal state
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -89,6 +101,13 @@ export const Player: React.FC<PlayerProps> = ({
   const speedRef = useRef(playbackSpeed);
   speedRef.current = playbackSpeed;
 
+  const handleStyleChange = (key: MapStyleKey) => {
+    setMapStyleKey(key);
+    if (mapRef.current) {
+      mapRef.current.setStyle(MAP_STYLES[key].style);
+    }
+  };
+
   // Initialize MapLibre
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -102,7 +121,7 @@ export const Player: React.FC<PlayerProps> = ({
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: CARTO_DARK_STYLE,
+      style: MAP_STYLES.dark.style,
       center: initialKeyframe.center,
       zoom: initialKeyframe.zoom,
       pitch: initialKeyframe.pitch,
@@ -403,6 +422,20 @@ export const Player: React.FC<PlayerProps> = ({
           </div>
 
           <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="relative flex items-center">
+              <MapIcon className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <select
+                value={mapStyleKey}
+                onChange={(e) => handleStyleChange(e.target.value as MapStyleKey)}
+                className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 border border-slate-800 backdrop-blur-md text-xs font-semibold outline-none cursor-pointer appearance-none transition"
+                title="Změnit podkladovou mapu"
+              >
+                <option value="dark">Tmavá (OpenFreeMap)</option>
+                <option value="liberty">Barevná (OpenFreeMap)</option>
+                <option value="osm">OpenStreetMap</option>
+              </select>
+            </div>
+
             <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs">
               <div className="text-slate-400">
                 Pozorování:{' '}
@@ -485,11 +518,10 @@ export const Player: React.FC<PlayerProps> = ({
                   key={s}
                   type="button"
                   onClick={() => setPlaybackSpeed(s)}
-                  className={`px-2 py-1 rounded-lg transition ${
-                    playbackSpeed === s
+                  className={`px-2 py-1 rounded-lg transition ${playbackSpeed === s
                       ? 'bg-emerald-500/20 text-emerald-400 font-semibold'
                       : 'hover:text-white'
-                  }`}
+                    }`}
                 >
                   {s}x
                 </button>
@@ -501,11 +533,10 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={handleToggleMute}
-              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${
-                isMuted
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition ${isMuted
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
-              }`}
+                }`}
               title={isMuted ? 'Zapnout zvuk' : 'Ztlumit zvuk'}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
