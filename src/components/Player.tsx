@@ -77,6 +77,7 @@ export const Player: React.FC<PlayerProps> = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isMapReady, setIsMapReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState(false);
@@ -94,6 +95,9 @@ export const Player: React.FC<PlayerProps> = ({
   const lastPlayedCueIndexRef = useRef<number>(-1);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
+
+  const isMapReadyRef = useRef(false);
+  isMapReadyRef.current = isMapReady;
 
   const currentTimeRef = useRef(currentTime);
   currentTimeRef.current = currentTime;
@@ -128,6 +132,14 @@ export const Player: React.FC<PlayerProps> = ({
       bearing: initialKeyframe.bearing,
       interactive: false, // Directed camera controls movement
       attributionControl: false,
+    });
+
+    map.once('load', () => {
+      if (map.areTilesLoaded()) {
+        setIsMapReady(true);
+      } else {
+        map.once('idle', () => setIsMapReady(true));
+      }
     });
 
     mapRef.current = map;
@@ -165,7 +177,7 @@ export const Player: React.FC<PlayerProps> = ({
       const dt = (wallNow - lastWallTimeRef.current) / 1000;
       lastWallTimeRef.current = wallNow;
 
-      if (isPlayingRef.current) {
+      if (isPlayingRef.current && isMapReadyRef.current) {
         let nextTime = currentTimeRef.current + dt * speedRef.current;
         if (nextTime >= timeline.duration) {
           nextTime = timeline.duration;

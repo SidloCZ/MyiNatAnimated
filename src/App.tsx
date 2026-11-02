@@ -4,11 +4,12 @@ import { TimelineData } from './types/timeline';
 import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
 import { pickSuggestedHighlights } from './services/highlightScorer';
 import { buildTimeline } from './engine/timelineBuilder';
+import { preloadMapTiles } from './engine/tilePreloader';
 import { getTaxonVisuals } from './assets/icons/taxaIcons';
 import { SearchForm } from './components/SearchForm';
 import { HighlightPicker } from './components/HighlightPicker';
 import { PrepareProgress } from './components/PrepareProgress';
-import { Player } from './components/Player';
+import { Player, MAP_STYLES } from './components/Player';
 
 type AppStep = 'search' | 'highlights' | 'preparing' | 'player';
 
@@ -18,6 +19,7 @@ export function App() {
   const [observations, setObservations] = useState<InatObservation[]>([]);
   const [suggestedHighlights, setSuggestedHighlights] = useState<HighlightItem[]>([]);
   const [selectedHighlightIds, setSelectedHighlightIds] = useState<Set<number>>(new Set());
+  const [sequenceType, setSequenceType] = useState<'observed' | 'created'>('observed');
 
   // Preparation state
   const [prepareStatus, setPrepareStatus] = useState('');
@@ -67,9 +69,10 @@ export function App() {
     const tl = buildTimeline(observations, {
       targetDurationSeconds: 32,
       selectedHighlightIds,
+      sequenceType,
     });
     setTimeline(tl);
-    setPreparePercent(45);
+    setPreparePercent(25);
     setPrepareStatus('Generování vektorových sprite atlasů pro taxony a efekty…');
 
     await new Promise(r => setTimeout(r, 60));
@@ -90,6 +93,13 @@ export function App() {
       getTaxonVisuals('protozoa'),
       getTaxonVisuals('animalia'),
       getTaxonVisuals('unknown'),
+      getTaxonVisuals('insecta', { id: 0, name: 'Lepidoptera', rank: 'order' }),
+      getTaxonVisuals('insecta', { id: 0, name: 'Coleoptera', rank: 'order' }),
+      getTaxonVisuals('insecta', { id: 0, name: 'Hymenoptera', rank: 'order' }),
+      getTaxonVisuals('insecta', { id: 0, name: 'Odonata', rank: 'order' }),
+      getTaxonVisuals('insecta', { id: 0, name: 'Diptera', rank: 'order' }),
+      getTaxonVisuals('insecta', { id: 0, name: 'Hemiptera', rank: 'order' }),
+      getTaxonVisuals('arachnida', { id: 0, name: 'Araneae', rank: 'order' }),
     ];
 
     const photosToLoad = tl.events
@@ -101,10 +111,16 @@ export function App() {
 
     setPrepareStatus('Přednačítání fotografií vybraných highlightů…');
     const loadedSprites = await preloadSprites(visualsList, photosToLoad, (p) => {
-      setPreparePercent(45 + p * 50);
+      setPreparePercent(25 + p * 30);
+    });
+    setSprites(loadedSprites);
+
+    // 3. Preload map tiles along the entire animation path so there is no dark flicker during playback!
+    setPrepareStatus('Přednačítání mapových podkladů podél trasy animace…');
+    await preloadMapTiles(tl.cameraKeyframes, MAP_STYLES.dark.style, (p) => {
+      setPreparePercent(55 + p * 43);
     });
 
-    setSprites(loadedSprites);
     setPreparePercent(100);
     setPrepareStatus('Příprava dokončena.');
 
@@ -151,6 +167,8 @@ export function App() {
             observations={observations}
             suggestedHighlights={suggestedHighlights}
             selectedIds={selectedHighlightIds}
+            sequenceType={sequenceType}
+            onSequenceTypeChange={setSequenceType}
             onToggleHighlight={handleToggleHighlight}
             onProceed={handleStartPreparation}
             onBack={() => setStep('search')}

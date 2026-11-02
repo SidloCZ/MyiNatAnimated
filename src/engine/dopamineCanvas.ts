@@ -108,8 +108,8 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
 
     ctx.restore();
 
-    // 3. Flying SVG taxon icon (first 0.85s)
-    if (sprites && age >= 0 && age < 0.85) {
+    // 3. Flying SVG taxon icon (first 0.85s, throttled to avoid clutter)
+    if (sprites && ev.shouldFlyIcon !== false && age >= 0 && age < 0.85) {
       const progress = age / 0.85;
       const direction = (ev.id % 2 === 0 ? 1 : -1);
       const iconX = pt.x + direction * (progress * 42);

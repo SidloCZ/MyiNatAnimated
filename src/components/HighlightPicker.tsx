@@ -6,6 +6,8 @@ interface HighlightPickerProps {
   observations: InatObservation[];
   suggestedHighlights: HighlightItem[];
   selectedIds: Set<number>;
+  sequenceType: 'observed' | 'created';
+  onSequenceTypeChange: (type: 'observed' | 'created') => void;
   onToggleHighlight: (id: number) => void;
   onProceed: () => void;
   onBack: () => void;
@@ -15,6 +17,8 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   observations,
   suggestedHighlights,
   selectedIds,
+  sequenceType,
+  onSequenceTypeChange,
   onToggleHighlight,
   onProceed,
   onBack,
@@ -128,23 +132,53 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
         })}
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Zpět
-        </button>
-        <button
-          type="button"
-          onClick={onProceed}
-          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer"
-        >
-          Pokračovat
-          <ArrowRight className="w-4 h-4" />
-        </button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs text-slate-400 font-medium">Pořadí animace:</span>
+          <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => onSequenceTypeChange('observed')}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                sequenceType === 'observed'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Datum pozorování
+            </button>
+            <button
+              type="button"
+              onClick={() => onSequenceTypeChange('created')}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                sequenceType === 'created'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Datum nahrání
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-white transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Zpět
+          </button>
+          <button
+            type="button"
+            onClick={onProceed}
+            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+          >
+            Pokračovat
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

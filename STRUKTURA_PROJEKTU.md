@@ -8,6 +8,7 @@ MyiNatAnimated/
 │   └── workflows/
 │       └── deploy.yml            # Automatické nasazení na GitHub Pages
 ├── dist/                         # Výstupní statický balíček po sestavení (build)
+├── svg_icons/                    # Samostatné SVG ikony taxonů, řádů a náhledové HTML
 ├── src/
 │   ├── assets/
 │   │   └── icons/
@@ -24,6 +25,7 @@ MyiNatAnimated/
 │   │   ├── gifExporter.ts        # Deterministický snímkový export do formátu GIF
 │   │   ├── soundEngine.ts        # Procedurální Web Audio syntezátor
 │   │   ├── spriteAtlas.ts        # Vykreslení SVG cest a přednačtení fotografií
+│   │   ├── tilePreloader.ts      # Přednačtení mapových dlaždic podél trasy animace
 │   │   ├── timelineBuilder.ts    # Mapování událostí na časovou osu a generování podnětů
 │   │   └── videoExporter.ts      # Export do MP4 (H.264 + AAC) přes WebCodecs a mp4-muxer
 │   ├── services/

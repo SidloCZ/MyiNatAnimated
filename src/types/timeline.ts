@@ -19,6 +19,7 @@ export interface ObsEvent {
   favesCount: number;
   commentsCount: number;
   isHighlight: boolean;
+  shouldFlyIcon?: boolean;
 }
 
 export interface SoundCue {

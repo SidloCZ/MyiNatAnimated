@@ -1,4 +1,4 @@
-import { SVG_PATHS, TaxonVisual } from '../assets/icons/taxaIcons';
+import { SVG_ELEMENTS, TaxonVisual } from '../assets/icons/taxaIcons';
 
 export interface PreloadedSprites {
   taxa: Map<string, HTMLCanvasElement>;
@@ -7,23 +7,28 @@ export interface PreloadedSprites {
   photos: Map<number, HTMLImageElement>;
 }
 
-export function renderSvgToCanvas(svgPath: string, fillColor: string, size = 48): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
+export function renderSvgToCanvasAsync(svgInner: string, fillColor: string, size = 64): Promise<HTMLCanvasElement> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      resolve(canvas);
+      return;
+    }
 
-  // Scale from 24x24 viewBox to target size
-  const scale = size / 24;
-  ctx.save();
-  ctx.scale(scale, scale);
-  const path2d = new Path2D(svgPath);
-  ctx.fillStyle = fillColor;
-  ctx.fill(path2d);
-  ctx.restore();
-
-  return canvas;
+    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="${fillColor}">${svgInner}</svg>`;
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, size, size);
+      resolve(canvas);
+    };
+    img.onerror = () => {
+      resolve(canvas);
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(fullSvg);
+  });
 }
 
 export async function preloadSprites(
@@ -33,19 +38,24 @@ export async function preloadSprites(
 ): Promise<PreloadedSprites> {
   const taxaMap = new Map<string, HTMLCanvasElement>();
 
-  // Render taxa icons
+  // Render taxa icons asynchronously from official SVG vectors
   for (const v of visuals) {
-    taxaMap.set(v.key, renderSvgToCanvas(v.svgPath, v.color, 48));
+    const canvas = await renderSvgToCanvasAsync(v.svgInner, v.color, 64);
+    taxaMap.set(v.key, canvas);
   }
 
   // Render star and comment icons
-  const starCanvas = renderSvgToCanvas(SVG_PATHS.star, '#ffb300', 48);
-  const commentCanvas = renderSvgToCanvas(SVG_PATHS.comment, '#00e5ff', 48);
+  const starCanvas = await renderSvgToCanvasAsync(SVG_ELEMENTS.star || '', '#ffb300', 64);
+  const commentCanvas = await renderSvgToCanvasAsync(SVG_ELEMENTS.comment || '', '#00e5ff', 64);
 
   // Preload highlight photos
   const photoMap = new Map<number, HTMLImageElement>();
   let loaded = 0;
   const total = photoUrls.length;
+
+  if (total === 0 && onProgress) {
+    onProgress(1);
+  }
 
   await Promise.all(
     photoUrls.map(({ id, url }) => {
@@ -76,4 +86,3 @@ export async function preloadSprites(
     photos: photoMap,
   };
 }
-

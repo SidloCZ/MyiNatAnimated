@@ -7,6 +7,7 @@ export interface TimelineBuilderOptions {
   targetDurationSeconds?: number;
   highlightPauseSeconds?: number;
   selectedHighlightIds?: Set<number>;
+  sequenceType?: 'observed' | 'created';
 }
 
 // Pentatonic scale frequencies in Hz (C major pentatonic across 3 octaves)
@@ -24,6 +25,7 @@ export function buildTimeline(
     targetDurationSeconds = 30,
     highlightPauseSeconds = 1.8,
     selectedHighlightIds = new Set<number>(),
+    sequenceType = 'observed',
   } = options;
 
   if (observations.length === 0) {
@@ -44,15 +46,20 @@ export function buildTimeline(
     };
   }
 
-  // 1. Gather timestamps
+  // 1. Gather timestamps and sort by selected sequence
   const parsed = observations.map(obs => {
-    const rawTime = obs.time_observed_at || obs.observed_on || obs.created_at;
+    let rawTime = obs.time_observed_at || obs.observed_on || obs.created_at;
+    if (sequenceType === 'created') {
+      rawTime = obs.created_at || rawTime;
+    }
     const timeMs = new Date(rawTime).getTime() || 0;
     return { obs, timeMs };
   });
 
-  const realStartDate = observations[0].observed_on || '';
-  const realEndDate = observations[observations.length - 1].observed_on || '';
+  parsed.sort((a, b) => a.timeMs - b.timeMs);
+
+  const realStartDate = parsed[0].obs.observed_on || parsed[0].obs.created_at || '';
+  const realEndDate = parsed[parsed.length - 1].obs.observed_on || parsed[parsed.length - 1].obs.created_at || '';
 
   // Stats calculation
   const speciesSet = new Set<string>();
@@ -85,6 +92,11 @@ export function buildTimeline(
   let lastSoundTime = -1;
   const minSoundInterval = 0.09; // Don't overwhelm audio if hundreds of points
 
+  // Throttle flying SVG icons (~2/3 fewer, 1 per 5 for identical taxa)
+  const lastFlownTaxonTime: Record<string, number> = {};
+  const countSinceLastFlown: Record<string, number> = {};
+  let lastAnyIconTime = -1;
+
   for (let i = 0; i < parsed.length; i++) {
     const { obs } = parsed[i];
     const prev = i > 0 ? parsed[i - 1] : null;
@@ -96,32 +108,56 @@ export function buildTimeline(
     // If distant jump, allocate smooth flight time and schedule whoosh sound
     if (prev && prev.obs.geojson?.coordinates) {
       const dist = calculateDistanceKm(prev.obs.geojson.coordinates, coords);
-        const flightDuration = calculateFlightDuration(dist);
-        if (flightDuration > 0) {
-          currentAnimTime += flightDuration;
-          // Whoosh sound plays at peak cruise altitude / midpoint
-          soundCues.push({
-            t: currentAnimTime - flightDuration * 0.5,
-            type: 'whoosh',
-            gain: 0.3,
-          });
-        }
+      const flightDuration = calculateFlightDuration(dist);
+      if (flightDuration > 0) {
+        currentAnimTime += flightDuration;
+        // Whoosh sound plays at peak cruise altitude / midpoint
+        soundCues.push({
+          t: currentAnimTime - flightDuration * 0.5,
+          type: 'whoosh',
+          gain: 0.3,
+        });
       }
+    }
 
-      const eventTime = currentAnimTime;
+    const eventTime = currentAnimTime;
 
-      events.push({
-        id: obs.id,
-        t: eventTime,
-        observation: obs,
-        coordinates: coords,
-        iconicTaxon: obs.taxon?.iconic_taxon_name || 'unknown',
-        orderName: obs.taxon?.rank === 'order' ? obs.taxon.name : undefined,
-        color: visuals.color,
-        favesCount: obs.faves_count || 0,
-        commentsCount: obs.comments_count || 0,
-        isHighlight,
-      });
+    // Determine if flying SVG icon should appear (about 2/3 fewer to prevent spam)
+    const taxonKey = (obs.taxon?.rank === 'order' ? obs.taxon.name : obs.taxon?.iconic_taxon_name || 'unknown').toLowerCase();
+    const count = (countSinceLastFlown[taxonKey] || 0) + 1;
+    countSinceLastFlown[taxonKey] = count;
+
+    const timeSinceSame = eventTime - (lastFlownTaxonTime[taxonKey] ?? -999);
+    const timeSinceAny = eventTime - lastAnyIconTime;
+
+    let shouldFlyIcon = false;
+    if (isHighlight) {
+      shouldFlyIcon = true;
+    } else if (timeSinceAny >= 0.45) {
+      if (count >= 5 || timeSinceSame >= 2.5) {
+        shouldFlyIcon = true;
+      }
+    }
+
+    if (shouldFlyIcon) {
+      lastFlownTaxonTime[taxonKey] = eventTime;
+      countSinceLastFlown[taxonKey] = 0;
+      lastAnyIconTime = eventTime;
+    }
+
+    events.push({
+      id: obs.id,
+      t: eventTime,
+      observation: obs,
+      coordinates: coords,
+      iconicTaxon: obs.taxon?.iconic_taxon_name || 'unknown',
+      orderName: obs.taxon?.rank === 'order' ? obs.taxon.name : undefined,
+      color: visuals.color,
+      favesCount: obs.faves_count || 0,
+      commentsCount: obs.comments_count || 0,
+      isHighlight,
+      shouldFlyIcon,
+    });
 
       // Sound cues
       if (isHighlight) {
