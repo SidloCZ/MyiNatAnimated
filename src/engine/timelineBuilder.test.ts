@@ -60,5 +60,33 @@ describe('timelineBuilder', () => {
     // Out of 6 consecutive identical points, at most 2 should fly (reduction by ~67%)
     expect(flyingCount).toBeLessThanOrEqual(2);
   });
+
+  it('filters isolated distant observations when filterIsolated is enabled', () => {
+    // 5 in Prague
+    const list: InatObservation[] = [];
+    for (let i = 1; i <= 5; i++) {
+      list.push(createMockObs(i, `2024-05-0${i}`, `2024-05-0${i}`));
+    }
+    // 1 isolated in Paris (~880 km away)
+    const parisObs: InatObservation = {
+      ...createMockObs(99, '2024-05-06', '2024-05-06'),
+      geojson: { type: 'Point', coordinates: [2.35, 48.85] },
+    };
+    list.push(parisObs);
+    // 5 more in Prague
+    for (let i = 7; i <= 11; i++) {
+      list.push(createMockObs(i, `2024-05-${i < 10 ? '0' + i : i}`, `2024-05-${i < 10 ? '0' + i : i}`));
+    }
+
+    // Default: filterIsolated is false
+    const tlDefault = buildTimeline(list);
+    expect(tlDefault.events).toHaveLength(11);
+    expect(tlDefault.events.some(e => e.id === 99)).toBe(true);
+
+    // Enabled: filterIsolated is true
+    const tlFiltered = buildTimeline(list, { filterIsolated: true });
+    expect(tlFiltered.events).toHaveLength(10);
+    expect(tlFiltered.events.some(e => e.id === 99)).toBe(false);
+  });
 });
 

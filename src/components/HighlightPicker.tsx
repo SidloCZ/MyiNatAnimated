@@ -11,6 +11,9 @@ interface HighlightPickerProps {
   filterObscured: boolean;
   onFilterObscuredChange: (filter: boolean) => void;
   obscuredCount: number;
+  filterIsolated: boolean;
+  onFilterIsolatedChange: (filter: boolean) => void;
+  isolatedCount: number;
   onToggleHighlight: (id: number) => void;
   onProceed: () => void;
   onBack: () => void;
@@ -25,6 +28,9 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   filterObscured,
   onFilterObscuredChange,
   obscuredCount,
+  filterIsolated,
+  onFilterIsolatedChange,
+  isolatedCount,
   onToggleHighlight,
   onProceed,
   onBack,
@@ -50,6 +56,11 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           {filterObscured && obscuredCount > 0 && (
             <span className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
               {obscuredCount}&nbsp;zkreslených skryto
+            </span>
+          )}
+          {filterIsolated && isolatedCount > 0 && (
+            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              {isolatedCount}&nbsp;osamocených vynecháno
             </span>
           )}
         </div>
@@ -183,6 +194,17 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
               className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
             />
             <span>Skrýt zkreslené / soukromé body</span>
+          </label>
+
+          {/* Filtr osamocených vzdálených bodů */}
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-1">
+            <input
+              type="checkbox"
+              checked={filterIsolated}
+              onChange={(e) => onFilterIsolatedChange(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+            />
+            <span>Vynechat osamocené body (&gt;&nbsp;150&nbsp;km)</span>
           </label>
         </div>
 
