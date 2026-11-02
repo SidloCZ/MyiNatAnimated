@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { InatObservation, HighlightItem } from './types/inat';
+import { TimelineData } from './types/timeline';
+import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
+import { pickSuggestedHighlights } from './services/highlightScorer';
+import { buildTimeline } from './engine/timelineBuilder';
+import { getTaxonVisuals } from './assets/icons/taxaIcons';
+import { SearchForm } from './components/SearchForm';
+import { HighlightPicker } from './components/HighlightPicker';
+import { PrepareProgress } from './components/PrepareProgress';
+import { Player } from './components/Player';
+
+type AppStep = 'search' | 'highlights' | 'preparing' | 'player';
+
+export function App() {
+  const [step, setStep] = useState<AppStep>('search');
+  const [username, setUsername] = useState('');
+  const [observations, setObservations] = useState<InatObservation[]>([]);
+  const [suggestedHighlights, setSuggestedHighlights] = useState<HighlightItem[]>([]);
+  const [selectedHighlightIds, setSelectedHighlightIds] = useState<Set<number>>(new Set());
+
+  // Preparation state
+  const [prepareStatus, setPrepareStatus] = useState('');
+  const [preparePercent, setPreparePercent] = useState(0);
+
+  // Playback state
+  const [timeline, setTimeline] = useState<TimelineData | null>(null);
+  const [sprites, setSprites] = useState<PreloadedSprites | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Step 1: Data loaded from API or Demo
+  const handleDataLoaded = (loadedObs: InatObservation[], user: string) => {
+    setUsername(user);
+    setObservations(loadedObs);
+
+    const highlights = pickSuggestedHighlights(loadedObs, 8);
+    setSuggestedHighlights(highlights);
+
+    // Pre-select top 5 highlights by default
+    const defaultIds = new Set(highlights.slice(0, 5).map(h => h.observation.id));
+    setSelectedHighlightIds(defaultIds);
+
+    setStep('highlights');
+  };
+
+  // Step 2: Toggle highlights in/out
+  const handleToggleHighlight = (id: number) => {
+    const next = new Set(selectedHighlightIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedHighlightIds(next);
+  };
+
+  // Step 3: Preparation (deterministic pre-computation)
+  const handleStartPreparation = async () => {
+    setStep('preparing');
+    setPreparePercent(10);
+    setPrepareStatus('Výpočet časové osy a vyhlazené dráhy kamery…');
+
+    // Slight delay so UI renders the progress card
+    await new Promise(r => setTimeout(r, 60));
+
+    // 1. Build timeline
+    const tl = buildTimeline(observations, {
+      targetDurationSeconds: 32,
+      selectedHighlightIds,
+    });
+    setTimeline(tl);
+    setPreparePercent(45);
+    setPrepareStatus('Generování vektorových sprite atlasů pro taxony a efekty…');
+
+    await new Promise(r => setTimeout(r, 60));
+
+    // 2. Gather unique taxa visuals and photos to preload
+    const visualsList = [
+      getTaxonVisuals('plantae'),
+      getTaxonVisuals('insecta'),
+      getTaxonVisuals('aves'),
+      getTaxonVisuals('fungi'),
+      getTaxonVisuals('mammalia'),
+      getTaxonVisuals('reptilia'),
+      getTaxonVisuals('amphibia'),
+      getTaxonVisuals('arachnida'),
+      getTaxonVisuals('mollusca'),
+      getTaxonVisuals('actinopterygii'),
+      getTaxonVisuals('chromista'),
+      getTaxonVisuals('protozoa'),
+      getTaxonVisuals('animalia'),
+      getTaxonVisuals('unknown'),
+    ];
+
+    const photosToLoad = tl.events
+      .filter(ev => ev.isHighlight && ev.observation.photos?.[0])
+      .map(ev => ({
+        id: ev.id,
+        url: ev.observation.photos[0].medium_url || ev.observation.photos[0].url,
+      }));
+
+    setPrepareStatus('Přednačítání fotografií vybraných highlightů…');
+    const loadedSprites = await preloadSprites(visualsList, photosToLoad, (p) => {
+      setPreparePercent(45 + p * 50);
+    });
+
+    setSprites(loadedSprites);
+    setPreparePercent(100);
+    setPrepareStatus('Příprava dokončena.');
+
+    await new Promise(r => setTimeout(r, 120));
+    setStep('player');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* Navigation Top Bar */}
+      <header className="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <svg
+              className="w-6 h-6 text-emerald-400"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z" />
+            </svg>
+            <span className="font-bold text-white tracking-tight text-sm sm:text-base">
+              MyiNatAnimated
+            </span>
+          </div>
+
+          <div className="text-xs text-slate-400 hidden sm:block">
+            Animovaný mapový příběh pozorování
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+        {step === 'search' && (
+          <SearchForm
+            onDataLoaded={handleDataLoaded}
+            isLoading={isLoading}
+            setIsLoading={setIsLoading}
+          />
+        )}
+
+        {step === 'highlights' && (
+          <HighlightPicker
+            observations={observations}
+            suggestedHighlights={suggestedHighlights}
+            selectedIds={selectedHighlightIds}
+            onToggleHighlight={handleToggleHighlight}
+            onProceed={handleStartPreparation}
+            onBack={() => setStep('search')}
+          />
+        )}
+
+        {step === 'preparing' && (
+          <PrepareProgress
+            statusText={prepareStatus}
+            progressPercent={preparePercent}
+          />
+        )}
+
+        {step === 'player' && timeline && sprites && (
+          <Player
+            timeline={timeline}
+            sprites={sprites}
+            username={username}
+            onBack={() => setStep('highlights')}
+          />
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-500">
+        Data z iNaturalist API &middot; Zvukový engine ve Web Audio API &middot; Bez externích trackerů
+      </footer>
+    </div>
+  );
+}
+
+export default App;
+
