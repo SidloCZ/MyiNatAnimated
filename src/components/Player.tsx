@@ -568,7 +568,7 @@ export const Player: React.FC<PlayerProps> = ({
 
         {/* Map Tile Preload / Warmup Overlay */}
         {isBuffering && (
-          <div className="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+          <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
             <div className="max-w-sm w-full bg-slate-900/90 border border-slate-800/90 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4">
               <div className="relative w-12 h-12 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
@@ -610,8 +610,22 @@ export const Player: React.FC<PlayerProps> = ({
           </div>
         )}
 
+        {/* Big Center Play Button (zobrazí se po načtení mapových podkladů při pozastaveném přehrávání) */}
+        {!isBuffering && isMapReady && !isPlaying && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={handleTogglePlay}
+              className="pointer-events-auto w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-emerald-300/40 ring-8 ring-emerald-500/20 group"
+              title={t.playTooltip}
+            >
+              <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-slate-950 ml-1.5 transition-transform group-hover:scale-110" />
+            </button>
+          </div>
+        )}
+
         {/* Top Header Overlay Bar */}
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10 gap-2">
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-30 gap-2">
           <div className="flex items-center gap-2 pointer-events-auto">
             <button
               type="button"
