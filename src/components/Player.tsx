@@ -19,19 +19,22 @@ import { PreloadedSprites } from '../engine/spriteAtlas';
 import { interpolateCamera } from '../engine/cameraDirector';
 import { warmupMapTiles, waitForMapIdle, waitForStyleLoad } from '../engine/tilePreloader';
 import { renderDopamineFrame } from '../engine/dopamineCanvas';
-import { getPlaybackStatsAtTime, formatCzechDate } from '../engine/timelineBuilder';
+import { getPlaybackStatsAtTime } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
 import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat } from '../types/export';
 import { exportToMp4 } from '../engine/videoExporter';
 import { exportToGif } from '../engine/gifExporter';
 import { exportToApng } from '../engine/apngExporter';
+import { Language, translations, formatLocalizedDate } from '../i18n/translations';
+import { logToTerminal } from '../services/logger';
 
 interface PlayerProps {
   timeline: TimelineData;
   sprites: PreloadedSprites;
   username: string;
   onBack: () => void;
+  locale?: Language;
 }
 
 export type MapStyleKey = 'dark' | 'liberty' | 'positron' | 'bright' | 'osm';
@@ -64,7 +67,11 @@ export const Player: React.FC<PlayerProps> = ({
   sprites,
   username,
   onBack,
+  locale = 'cs',
 }) => {
+  const t = translations[locale];
+  const currentExportAspectRatioRef = useRef<VideoAspectRatio>('16:9');
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -373,30 +380,61 @@ export const Player: React.FC<PlayerProps> = ({
     const targetCtx = targetCanvas.getContext('2d');
     if (!targetCtx) return;
 
+    const mapCanvas = map.getCanvas();
+    const mapW = mapCanvas.width;
+    const mapH = mapCanvas.height;
+    const targetW = targetCanvas.width;
+    const targetH = targetCanvas.height;
+
     // Fill background color matching map style so no black borders appear
     targetCtx.fillStyle = mapStyleKey === 'dark' ? '#0f172a' : '#f8fafc';
-    targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+    targetCtx.fillRect(0, 0, targetW, targetH);
 
-    // 1. Draw MapLibre canvas
-    const mapCanvas = map.getCanvas();
-    targetCtx.drawImage(mapCanvas, 0, 0, targetCanvas.width, targetCanvas.height);
+    // Calculate aspect ratio crop (cover) to prevent squishing on 9:16 and 1:1
+    const targetRatio = targetW / targetH;
+    const mapRatio = mapW / mapH;
 
-    // 2. Overlay Dopamine effects
+    let sx = 0;
+    let sy = 0;
+    let sw = mapW;
+    let sh = mapH;
+
+    if (mapRatio > targetRatio) {
+      // Map is wider than target: crop sides
+      sw = mapH * targetRatio;
+      sx = (mapW - sw) / 2;
+    } else {
+      // Map is taller than target: crop top and bottom
+      sh = mapW / targetRatio;
+      sy = (mapH - sh) / 2;
+    }
+
+    // 1. Draw cropped map onto target canvas with true isotropic aspect ratio
+    targetCtx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, targetW, targetH);
+
+    // 2. Overlay Dopamine effects with isotropic projection and UI scaling
+    const scaleFactor = targetW / sw;
     renderDopamineFrame({
       ctx: targetCtx,
-      width: targetCanvas.width,
-      height: targetCanvas.height,
+      width: targetW,
+      height: targetH,
       timeline,
       t: timeSec,
       project: (coord) => {
         const p = map.project(coord);
-        // Scale to targetCanvas
-        const scaleX = targetCanvas.width / mapCanvas.clientWidth;
-        const scaleY = targetCanvas.height / mapCanvas.clientHeight;
-        return { x: p.x * scaleX, y: p.y * scaleY };
+        // Map CSS client coordinate to mapCanvas backing buffer pixels
+        const mx = p.x * (mapW / mapCanvas.clientWidth);
+        const my = p.y * (mapH / mapCanvas.clientHeight);
+        // Offset by crop origin and scale isotropically to target canvas
+        return {
+          x: (mx - sx) * scaleFactor,
+          y: (my - sy) * scaleFactor,
+        };
       },
       sprites,
       isExport: true,
+      aspectRatio: currentExportAspectRatioRef.current,
+      locale,
     });
   };
 
@@ -410,10 +448,13 @@ export const Player: React.FC<PlayerProps> = ({
 
   const handleStartExport = async (format: ExportFormat, aspectRatio: VideoAspectRatio) => {
     setIsPlaying(false);
+    currentExportAspectRatioRef.current = aspectRatio;
     if (downloadUrl) {
       URL.revokeObjectURL(downloadUrl);
     }
     setDownloadUrl(null);
+
+    logToTerminal('info', `Spuštěn export: ${format.toUpperCase()} (${aspectRatio})`);
 
     let width = 1920;
     let height = 1080;
@@ -492,14 +533,16 @@ export const Player: React.FC<PlayerProps> = ({
         percentage: 100,
         phase: 'completed',
       });
+      logToTerminal('info', `Export dokončen: ${filename} (velikost: ${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
     } catch (err: unknown) {
       console.error('Chyba exportu:', err);
+      logToTerminal('error', `Chyba při exportu: ${err instanceof Error ? err.message : String(err)}`, err);
       setExportProgress({
         currentFrame: 0,
         totalFrames: 0,
         percentage: 0,
         phase: 'error',
-        errorMessage: err instanceof Error ? err.message : 'Neznámá chyba při exportu',
+        errorMessage: err instanceof Error ? err.message : (locale === 'cs' ? 'Neznámá chyba při exportu' : 'Unknown export error'),
       });
     }
   };
@@ -535,10 +578,10 @@ export const Player: React.FC<PlayerProps> = ({
 
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-white tracking-tight">
-                  Přednačítání mapových podkladů
+                  {t.bufferingTitle}
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Ukládání trasy do paměti GPU pro plynulý přelet bez zpoždění a problikávání dlaždic.
+                  {t.bufferingDesc}
                 </p>
               </div>
 
@@ -551,7 +594,7 @@ export const Player: React.FC<PlayerProps> = ({
                   />
                 </div>
                 <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
-                  <span>Trasa kamery</span>
+                  <span>{t.cameraTrackProgress}</span>
                   <span className="text-emerald-400 font-semibold">{bufferProgress}&nbsp;%</span>
                 </div>
               </div>
@@ -561,7 +604,7 @@ export const Player: React.FC<PlayerProps> = ({
                 onClick={handleSkipBuffering}
                 className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
               >
-                Přeskočit a spustit ihned
+                {t.skipBufferingBtn}
               </button>
             </div>
           </div>
@@ -573,13 +616,13 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-800 backdrop-blur-md text-xs font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-800 backdrop-blur-md text-xs font-semibold transition cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Zpět
+              {t.backBtn}
             </button>
             <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs text-slate-300 font-medium hidden sm:block">
-              <span className="text-slate-500">Uživatel:</span>{' '}
+              <span className="text-slate-500">{t.userPrefix}</span>{' '}
               <span className="text-white font-semibold">{username}</span>
             </div>
           </div>
@@ -589,7 +632,7 @@ export const Player: React.FC<PlayerProps> = ({
             <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md">
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs sm:text-sm font-bold text-white tracking-wide font-mono">
-                {formatCzechDate(currentStats.dateStr)}
+                {formatLocalizedDate(currentStats.dateStr, locale)}
               </span>
             </div>
           )}
@@ -601,19 +644,19 @@ export const Player: React.FC<PlayerProps> = ({
                 value={mapStyleKey}
                 onChange={(e) => handleStyleChange(e.target.value as MapStyleKey)}
                 className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 border border-slate-800 backdrop-blur-md text-xs font-semibold outline-none cursor-pointer appearance-none transition"
-                title="Změnit podkladovou mapu"
+                title={t.mapStyleTitle}
               >
-                <option value="dark">Tmavá (OpenFreeMap)</option>
-                <option value="liberty">Barevná (OpenFreeMap)</option>
-                <option value="positron">Světlá (OpenFreeMap)</option>
-                <option value="bright">Jasná (OpenFreeMap)</option>
+                <option value="dark">{t.styleDark}</option>
+                <option value="liberty">{t.styleLiberty}</option>
+                <option value="positron">{t.stylePositron}</option>
+                <option value="bright">{t.styleBright}</option>
               </select>
             </div>
 
             {/* Dynamic observation and species counters */}
             <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md text-xs">
               <div className="text-slate-400 flex items-center gap-1">
-                <span className="hidden sm:inline">Pozorování:</span>
+                <span className="hidden sm:inline">{t.observationsLabel}</span>
                 <span className="text-emerald-400 font-bold font-mono text-xs sm:text-sm">
                   {currentStats.obsCount}
                 </span>
@@ -622,7 +665,7 @@ export const Player: React.FC<PlayerProps> = ({
                 </span>
               </div>
               <div className="text-slate-400 flex items-center gap-1">
-                <span className="hidden sm:inline">Druhy:</span>
+                <span className="hidden sm:inline">{t.speciesLabel}</span>
                 <span className="text-cyan-400 font-bold font-mono text-xs sm:text-sm">
                   {currentStats.speciesCount}
                 </span>
@@ -635,7 +678,7 @@ export const Player: React.FC<PlayerProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-md transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Exportovat</span>
+              <span className="hidden sm:inline">{t.exportBtn}</span>
             </button>
           </div>
         </div>
@@ -671,7 +714,7 @@ export const Player: React.FC<PlayerProps> = ({
               type="button"
               onClick={handleTogglePlay}
               className="w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center transition shadow-md cursor-pointer"
-              title={isPlaying ? 'Pozastavit (Mezerník)' : 'Přehrát (Mezerník)'}
+              title={isPlaying ? t.pauseTooltip : t.playTooltip}
             >
               {isPlaying ? (
                 <Pause className="w-4 h-4 fill-slate-950" />
@@ -683,8 +726,8 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={() => handleSeek(0)}
-              className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 flex items-center justify-center transition"
-              title="Restartovat od začátku"
+              className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 flex items-center justify-center transition cursor-pointer"
+              title={t.resetTooltip}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -715,7 +758,7 @@ export const Player: React.FC<PlayerProps> = ({
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
                 }`}
-              title={isMuted ? 'Zapnout zvuk' : 'Ztlumit zvuk'}
+              title={isMuted ? t.unmuteTooltip : t.muteTooltip}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -724,7 +767,7 @@ export const Player: React.FC<PlayerProps> = ({
               type="button"
               onClick={handleToggleFullscreen}
               className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition"
-              title="Celá obrazovka"
+              title={t.fullscreenTooltip}
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
@@ -744,6 +787,7 @@ export const Player: React.FC<PlayerProps> = ({
         exportProgress={exportProgress}
         downloadUrl={downloadUrl}
         downloadFilename={downloadFilename}
+        locale={locale}
       />
     </div>
   );

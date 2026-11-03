@@ -28,8 +28,8 @@ export async function exportToGif(
     await renderFrame(t, canvas);
 
     const imgData = ctx.getImageData(0, 0, width, height);
-    const palette = quantize(imgData.data, 256, { format: 'rgba4444' });
-    const index = applyPalette(imgData.data, palette, 'rgba4444');
+    const palette = quantize(imgData.data, 256, { format: 'rgb565' });
+    const index = applyPalette(imgData.data, palette, 'rgb565');
 
     gif.writeFrame(index, width, height, { palette, delay: delayMs });
 
@@ -41,6 +41,9 @@ export async function exportToGif(
         phase: 'rendering',
       });
     }
+
+    // Yield to event loop so React can render progress bar updates and prevent UI freeze
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   gif.finish();

@@ -217,6 +217,9 @@ export async function exportToApng(
         phase: 'rendering',
       });
     }
+
+    // Yield to event loop to keep UI and progress bar responsive
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   if (onProgress) {

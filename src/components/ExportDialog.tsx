@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle, RotateCcw } from 'lucide-react';
 import { VideoAspectRatio, ExportProgress, ExportFormat } from '../types/export';
+import { Language, translations } from '../i18n/translations';
 
 interface ExportDialogProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface ExportDialogProps {
   exportProgress: ExportProgress | null;
   downloadUrl: string | null;
   downloadFilename: string;
+  locale?: Language;
 }
 
 export const ExportDialog: React.FC<ExportDialogProps> = ({
@@ -20,11 +22,14 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   exportProgress,
   downloadUrl,
   downloadFilename,
+  locale = 'cs',
 }) => {
   const [format, setFormat] = useState<ExportFormat>('mp4');
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>('16:9');
   const isExporting = exportProgress !== null && exportProgress.phase !== 'completed' && exportProgress.phase !== 'error';
   const hasError = exportProgress !== null && exportProgress.phase === 'error';
+
+  const t = translations[locale];
 
   const handleSelectFormat = (newFormat: ExportFormat) => {
     setFormat(newFormat);
@@ -55,16 +60,16 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         </button>
 
         <h3 className="text-lg font-bold text-white mb-1">
-          Exportovat animaci
+          {t.exportDialogTitle}
         </h3>
         <p className="text-xs text-slate-400 mb-6">
-          Zvolte formát a&nbsp;poměr stran pro export do videa nebo animovaného obrázku.
+          {t.exportDialogSubtitle}
         </p>
 
         {/* Format selector */}
         <div className="mb-5">
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Formát souboru
+            {t.fileFormatLabel}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
@@ -79,9 +84,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             >
               <div className="flex items-center gap-1.5">
                 <Film className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-semibold text-white">MP4 video</span>
+                <span className="text-xs font-semibold text-white">{t.mp4Title}</span>
               </div>
-              <div className="text-[10px] text-slate-400">Se zvukem, 30&nbsp;FPS</div>
+              <div className="text-[10px] text-slate-400">{t.mp4Desc}</div>
             </button>
 
             <button
@@ -96,9 +101,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             >
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-semibold text-white">APNG</span>
+                <span className="text-xs font-semibold text-white">{t.apngTitle}</span>
               </div>
-              <div className="text-[10px] text-slate-400">Plné barvy, 15&nbsp;FPS</div>
+              <div className="text-[10px] text-slate-400">{t.apngDesc}</div>
             </button>
 
             <button
@@ -113,9 +118,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             >
               <div className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-semibold text-white">GIF</span>
+                <span className="text-xs font-semibold text-white">{t.gifTitle}</span>
               </div>
-              <div className="text-[10px] text-slate-400">256 barev, 15&nbsp;FPS</div>
+              <div className="text-[10px] text-slate-400">{t.gifDesc}</div>
             </button>
           </div>
         </div>
@@ -123,7 +128,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         {/* Aspect ratio selector */}
         <div className="mb-6">
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Poměr stran
+            {t.aspectRatioLabel}
           </label>
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -136,8 +141,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
               }`}
             >
-              <div className="text-xs font-semibold">16:9</div>
-              <div className="text-[10px] text-slate-500">Na šířku</div>
+              <div className="text-xs font-semibold">{t.ratio169}</div>
+              <div className="text-[10px] text-slate-500">{t.ratio169Desc}</div>
             </button>
 
             <button
@@ -150,8 +155,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
               }`}
             >
-              <div className="text-xs font-semibold">9:16</div>
-              <div className="text-[10px] text-slate-500">Na výšku</div>
+              <div className="text-xs font-semibold">{t.ratio916}</div>
+              <div className="text-[10px] text-slate-500">{t.ratio916Desc}</div>
             </button>
 
             <button
@@ -164,8 +169,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
               }`}
             >
-              <div className="text-xs font-semibold">1:1</div>
-              <div className="text-[10px] text-slate-500">Čtverec</div>
+              <div className="text-xs font-semibold">{t.ratio11}</div>
+              <div className="text-[10px] text-slate-500">{t.ratio11Desc}</div>
             </button>
           </div>
         </div>
@@ -176,7 +181,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <div className="flex justify-between items-center text-xs text-slate-300">
               <span className="flex items-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                Vykreslování: snímek {exportProgress.currentFrame}&nbsp;/ {exportProgress.totalFrames}
+                {t.renderingFrame} {exportProgress.currentFrame}&nbsp;/ {exportProgress.totalFrames}
               </span>
               <span className="font-mono text-emerald-400">{exportProgress.percentage}&nbsp;%</span>
             </div>
@@ -194,9 +199,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           <div className="mb-6 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="font-semibold text-rose-200">Export se nezdařil</div>
+              <div className="font-semibold text-rose-200">{t.exportFailed}</div>
               <div className="mt-0.5 text-rose-300/90 text-[11px]">
-                {exportProgress.errorMessage || 'Došlo k&nbsp;neočekávané chybě při vykreslování souboru.'}
+                {exportProgress.errorMessage || (locale === 'cs' ? 'Došlo k chybě při vykreslování souboru.' : 'An unexpected error occurred during rendering.')}
               </div>
             </div>
           </div>
@@ -211,7 +216,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
             >
               <Check className="w-4 h-4" />
-              Stáhnout ({downloadFilename})
+              {t.downloadReady} ({downloadFilename})
             </a>
             <button
               type="button"
@@ -219,7 +224,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700/80 transition cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Vygenerovat další export
+              {t.newExportBtn}
             </button>
           </div>
         ) : (
@@ -230,7 +235,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            {isExporting ? 'Probíhá export…' : 'Spustit export'}
+            {isExporting ? t.exportInProgress : t.startExportBtn}
           </button>
         )}
       </div>

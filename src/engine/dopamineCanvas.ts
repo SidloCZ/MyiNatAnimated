@@ -1,6 +1,7 @@
 import { TimelineData, ObsEvent } from '../types/timeline';
 import { PreloadedSprites } from './spriteAtlas';
-import { getPlaybackStatsAtTime, formatCzechDate } from './timelineBuilder';
+import { getPlaybackStatsAtTime } from './timelineBuilder';
+import { Language, formatLocalizedDate } from '../i18n/translations';
 
 export interface DopamineRenderOptions {
   ctx: CanvasRenderingContext2D;
@@ -11,6 +12,9 @@ export interface DopamineRenderOptions {
   project: (coord: [number, number]) => { x: number; y: number };
   sprites?: PreloadedSprites;
   isExport?: boolean;
+  aspectRatio?: '16:9' | '9:16' | '1:1';
+  uiScale?: number;
+  locale?: Language;
 }
 
 export function renderDopamineFrame(options: DopamineRenderOptions) {
@@ -137,15 +141,59 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
     }
   }
 
+  // Calculate adaptive UI scale and margins based on export aspect ratio
+  let uiScale = options.uiScale || 1.0;
+  let topMargin = 24;
+  let bottomMargin = 50;
+
+  if (options.isExport) {
+    if (options.aspectRatio === '9:16') {
+      uiScale = options.uiScale || 3.0; // 3x for vertical videos (Reels/TikTok)
+      topMargin = 110;                   // Keep distance from top status bar
+      bottomMargin = 200;                // Keep distance from bottom caption / action buttons
+    } else if (options.aspectRatio === '1:1') {
+      uiScale = options.uiScale || 2.0; // 2x for square posts
+      topMargin = 44;
+      bottomMargin = 76;
+    } else {
+      uiScale = options.uiScale || 2.0; // 2x for standard 16:9 videos
+      topMargin = 36;
+      bottomMargin = 64;
+    }
+  }
+
+  const locale = options.locale || 'cs';
+
   // 6. Highlight card popup overlay
   if (activeHighlight) {
-    drawHighlightCard(ctx, width, height, activeHighlight, activeHighlightProgress, sprites);
+    drawHighlightCard(
+      ctx,
+      width,
+      height,
+      activeHighlight,
+      activeHighlightProgress,
+      sprites,
+      uiScale,
+      bottomMargin,
+      locale
+    );
   }
 
   // 7. Embedded HUD on export (date ticker and dynamic observation/species counters)
   if (options.isExport) {
     const stats = getPlaybackStatsAtTime(timeline.events, t);
-    drawExportHud(ctx, width, height, stats.dateStr, stats.obsCount, timeline.stats.totalObservations, stats.speciesCount);
+    drawExportHud(
+      ctx,
+      width,
+      height,
+      stats.dateStr,
+      stats.obsCount,
+      timeline.stats.totalObservations,
+      stats.speciesCount,
+      uiScale,
+      topMargin,
+      locale
+    );
   }
 }
 
@@ -156,47 +204,55 @@ function drawExportHud(
   dateStr: string,
   obsCount: number,
   totalObs: number,
-  speciesCount: number
+  speciesCount: number,
+  uiScale = 1.0,
+  padY = 24,
+  locale: Language = 'cs'
 ) {
-  const padX = 24;
-  const padY = 24;
-  const formattedDate = formatCzechDate(dateStr);
+  const padX = 24 * (uiScale >= 2.5 ? 1.4 : 1.0);
+  const formattedDate = formatLocalizedDate(dateStr, locale);
 
   ctx.save();
-  const hudW = Math.min(320, width - 48);
-  const hudH = 58;
+  const hudW = Math.min(320 * uiScale, width - padX * 2);
+  const hudH = 58 * uiScale;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-  ctx.lineWidth = 1.5;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 1.5 * uiScale;
 
-  roundRect(ctx, padX, padY, hudW, hudH, 12);
+  roundRect(ctx, padX, padY, hudW, hudH, 12 * uiScale);
   ctx.fill();
   ctx.stroke();
 
   // Date
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText(formattedDate || 'iNaturalist', padX + 16, padY + 26);
+  ctx.font = `bold ${Math.round(16 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  ctx.fillText(formattedDate || 'iNaturalist', padX + 16 * uiScale, padY + 25 * uiScale);
 
   // Live counters below
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('Pozorování:', padX + 16, padY + 46);
+  ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const obsLabel = locale === 'cs' ? 'Pozorování:' : 'Observations:';
+  ctx.fillText(obsLabel, padX + 16 * uiScale, padY + 45 * uiScale);
 
+  const obsLabelWidth = ctx.measureText(obsLabel).width;
   ctx.fillStyle = '#74ac00';
-  ctx.font = 'bold 12px monospace';
+  ctx.font = `bold ${Math.round(12 * uiScale)}px monospace`;
   const obsText = `${obsCount} / ${totalObs}`;
-  ctx.fillText(obsText, padX + 90, padY + 46);
+  ctx.fillText(obsText, padX + 16 * uiScale + obsLabelWidth + 6 * uiScale, padY + 45 * uiScale);
 
   const obsTextWidth = ctx.measureText(obsText).width;
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillText('Druhy:', padX + 102 + obsTextWidth, padY + 46);
+  const speciesX = padX + 16 * uiScale + obsLabelWidth + obsTextWidth + 14 * uiScale;
 
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const speciesLabel = locale === 'cs' ? 'Druhy:' : 'Species:';
+  ctx.fillText(speciesLabel, speciesX, padY + 45 * uiScale);
+
+  const speciesLabelWidth = ctx.measureText(speciesLabel).width;
   ctx.fillStyle = '#22d3ee';
-  ctx.font = 'bold 12px monospace';
-  ctx.fillText(`${speciesCount}`, padX + 146 + obsTextWidth, padY + 46);
+  ctx.font = `bold ${Math.round(12 * uiScale)}px monospace`;
+  ctx.fillText(`${speciesCount}`, speciesX + speciesLabelWidth + 5 * uiScale, padY + 45 * uiScale);
 
   ctx.restore();
 }
@@ -207,49 +263,52 @@ function drawHighlightCard(
   height: number,
   event: ObsEvent,
   progress: number,
-  sprites?: PreloadedSprites
+  sprites?: PreloadedSprites,
+  uiScale = 1.0,
+  bottomMargin = 50,
+  locale: Language = 'cs'
 ) {
   // Entrance and exit fade/slide
   let slideY = 0;
   let opacity = 1;
   if (progress < 0.15) {
     const p = progress / 0.15;
-    slideY = (1 - p) * 30;
+    slideY = (1 - p) * 30 * uiScale;
     opacity = p;
   } else if (progress > 0.85) {
     const p = (progress - 0.85) / 0.15;
-    slideY = p * 20;
+    slideY = p * 20 * uiScale;
     opacity = 1 - p;
   }
 
-  const cardW = Math.min(360, width - 40);
-  const cardH = 110;
+  const cardW = Math.min(370 * uiScale, width - 40);
+  const cardH = 115 * uiScale;
   const cardX = (width - cardW) / 2;
-  const cardY = height - cardH - 50 + slideY;
+  const cardY = height - cardH - bottomMargin + slideY;
 
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
 
   // Frosted dark background
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 1.5;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+  ctx.lineWidth = 1.5 * uiScale;
 
-  roundRect(ctx, cardX, cardY, cardW, cardH, 14);
+  roundRect(ctx, cardX, cardY, cardW, cardH, 14 * uiScale);
   ctx.fill();
   ctx.stroke();
 
   // Photo thumbnail on the left
-  const photoSize = 86;
-  const photoX = cardX + 12;
-  const photoY = cardY + 12;
+  const photoSize = 90 * uiScale;
+  const photoX = cardX + 12 * uiScale;
+  const photoY = cardY + 12 * uiScale;
 
   const photoImg = sprites?.photos.get(event.id);
   const hasPhoto = !!photoImg && (photoImg.naturalWidth > 0 || photoImg.width > 0);
 
   if (hasPhoto && photoImg) {
     ctx.save();
-    roundRect(ctx, photoX, photoY, photoSize, photoSize, 10);
+    roundRect(ctx, photoX, photoY, photoSize, photoSize, 10 * uiScale);
     ctx.clip();
     drawImageCover(ctx, photoImg, photoX, photoY, photoSize, photoSize);
     ctx.restore();
@@ -257,50 +316,51 @@ function drawHighlightCard(
     // Fallback colored taxon box
     ctx.save();
     ctx.fillStyle = event.color;
-    roundRect(ctx, photoX, photoY, photoSize, photoSize, 10);
+    roundRect(ctx, photoX, photoY, photoSize, photoSize, 10 * uiScale);
     ctx.fill();
     ctx.restore();
   }
 
   // Text details on the right
-  const textX = photoX + photoSize + 14;
-  const textMaxW = cardW - (photoSize + 36);
+  const textX = photoX + photoSize + 14 * uiScale;
+  const textMaxW = cardW - (photoSize + 36 * uiScale);
 
   // Common name
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  const commonName = event.observation.taxon?.preferred_common_name || event.observation.taxon?.name || 'Pozorování';
-  ctx.fillText(truncateText(ctx, commonName, textMaxW), textX, cardY + 30);
+  ctx.font = `bold ${Math.round(15 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const commonName = event.observation.taxon?.preferred_common_name || event.observation.taxon?.name || (locale === 'cs' ? 'Pozorování' : 'Observation');
+  ctx.fillText(truncateText(ctx, commonName, textMaxW), textX, cardY + 28 * uiScale);
 
   // Scientific name in ITALICS (taxonomic rule!)
   if (event.observation.taxon?.name) {
     ctx.fillStyle = '#94a3b8';
-    ctx.font = 'italic 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(truncateText(ctx, event.observation.taxon.name, textMaxW), textX, cardY + 48);
+    ctx.font = `italic ${Math.round(13 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillText(truncateText(ctx, event.observation.taxon.name, textMaxW), textX, cardY + 48 * uiScale);
   }
 
   // Date and place
   ctx.fillStyle = '#64748b';
-  ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  const dateStr = event.observation.observed_on || '';
+  ctx.font = `${Math.round(11 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const dateStr = formatLocalizedDate(event.observation.observed_on || '', locale);
   const placeStr = event.observation.place_guess ? ` · ${event.observation.place_guess}` : '';
-  ctx.fillText(truncateText(ctx, `${dateStr}${placeStr}`, textMaxW), textX, cardY + 68);
+  ctx.fillText(truncateText(ctx, `${dateStr}${placeStr}`, textMaxW), textX, cardY + 68 * uiScale);
 
   // Badges: faves & comments with clean SVG sprites
   let badgeX = textX;
+  const iconSize = 14 * uiScale;
   if (sprites && event.favesCount > 0) {
-    ctx.drawImage(sprites.star, badgeX, cardY + 80, 14, 14);
+    ctx.drawImage(sprites.star, badgeX, cardY + 82 * uiScale, iconSize, iconSize);
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`${event.favesCount}`, badgeX + 18, cardY + 91);
-    badgeX += 45;
+    ctx.font = `bold ${Math.round(11 * uiScale)}px sans-serif`;
+    ctx.fillText(`${event.favesCount}`, badgeX + 18 * uiScale, cardY + 93 * uiScale);
+    badgeX += 45 * uiScale;
   }
 
   if (sprites && event.commentsCount > 0) {
-    ctx.drawImage(sprites.comment, badgeX, cardY + 80, 14, 14);
+    ctx.drawImage(sprites.comment, badgeX, cardY + 82 * uiScale, iconSize, iconSize);
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`${event.commentsCount}`, badgeX + 18, cardY + 91);
+    ctx.font = `bold ${Math.round(11 * uiScale)}px sans-serif`;
+    ctx.fillText(`${event.commentsCount}`, badgeX + 18 * uiScale, cardY + 93 * uiScale);
   }
 
   ctx.restore();

@@ -116,24 +116,48 @@ export class SoundEngine {
       osc.start(startTime);
       osc.stop(startTime + 0.11);
     } else if (cue.type === 'highlight') {
-      // Majestic 4-voice chord (Cmaj9: C4, G4, B4, D5)
-      const freqs = [261.63, 392.0, 493.88, 587.33];
-      for (const f of freqs) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+      // Delicate crystalline ascending nature chime (E5 -> B5 -> E6)
+      const chimeNotes = [
+        { f: 659.25, offset: 0.0 },   // E5
+        { f: 987.77, offset: 0.08 },  // B5
+        { f: 1318.51, offset: 0.16 }, // E6
+      ];
 
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(f, startTime);
+      for (const note of chimeNotes) {
+        const noteStart = startTime + note.offset;
+        const noteDuration = 0.55;
 
-        gain.gain.setValueAtTime(0.001, startTime);
-        gain.gain.linearRampToValueAtTime(gainAmount * 0.35, startTime + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.6);
+        // Primary bell tone (pure sine)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(note.f, noteStart);
 
-        osc.connect(gain);
-        gain.connect(destination);
+        gain1.gain.setValueAtTime(0.0001, noteStart);
+        gain1.gain.linearRampToValueAtTime(gainAmount * 0.45, noteStart + 0.012);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, noteStart + noteDuration);
 
-        osc.start(startTime);
-        osc.stop(startTime + 1.65);
+        osc1.connect(gain1);
+        gain1.connect(destination);
+
+        osc1.start(noteStart);
+        osc1.stop(noteStart + noteDuration + 0.05);
+
+        // Overtone shimmer (soft triangle an octave higher)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(note.f * 2, noteStart);
+
+        gain2.gain.setValueAtTime(0.0001, noteStart);
+        gain2.gain.linearRampToValueAtTime(gainAmount * 0.15, noteStart + 0.008);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, noteStart + noteDuration * 0.7);
+
+        osc2.connect(gain2);
+        gain2.connect(destination);
+
+        osc2.start(noteStart);
+        osc2.stop(noteStart + noteDuration * 0.7 + 0.05);
       }
     } else if (cue.type === 'whoosh') {
       // Camera whoosh via filtered noise

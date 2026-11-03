@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { InatObservation, HighlightItem } from '../types/inat';
 import { getObservationPhotoUrl } from '../services/inatApi';
+import { Language, translations, formatLocalizedDate } from '../i18n/translations';
 
 interface HighlightPickerProps {
   observations: InatObservation[];
@@ -28,6 +29,7 @@ interface HighlightPickerProps {
   onToggleHighlight: (id: number) => void;
   onProceed: () => void;
   onBack: () => void;
+  locale?: Language;
 }
 
 export type HighlightSortMode = 'faves' | 'score' | 'comments' | 'date';
@@ -47,7 +49,9 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   onToggleHighlight,
   onProceed,
   onBack,
+  locale = 'cs',
 }) => {
+  const t = translations[locale];
   // Výchozí řazení: napřed podle oblíbení, poté podle skóre, poté podle komentářů
   const [sortMode, setSortMode] = useState<HighlightSortMode>('faves');
 
@@ -88,27 +92,27 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-            Výběr highlightů ({suggestedHighlights.length})
+            {t.highlightTitle} ({suggestedHighlights.length})
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Zvolte pozorování, u&nbsp;kterých se kamera zpomalí a&nbsp;zobrazí se detailní vizitka.
+            {t.highlightSubtitle}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
-            Aktivních: {selectedIds.size}
+            {t.selectedCount}: {selectedIds.size}&nbsp;/&nbsp;12
           </span>
           <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400">
-            Z&nbsp;celkem: {observations.length}&nbsp;pozorování
+            {locale === 'cs' ? `Z celkem: ${observations.length} pozorování` : `Pool: ${observations.length} observations`}
           </span>
           {filterObscured && obscuredCount > 0 && (
-            <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              {obscuredCount}&nbsp;zkreslených skryto
+            <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              {locale === 'cs' ? `${obscuredCount} zkreslených skryto` : `${obscuredCount} obscured hidden`}
             </span>
           )}
           {filterIsolated && isolatedCount > 0 && (
-            <span className="text-xs px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              {isolatedCount}&nbsp;osamocených vynecháno
+            <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              {locale === 'cs' ? `${isolatedCount} osamocených vynecháno` : `${isolatedCount} isolated skipped`}
             </span>
           )}
         </div>
@@ -119,7 +123,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            Řadit seznam dle:
+            {t.sortLabel}
           </span>
           <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
             <button
@@ -131,7 +135,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 }`}
             >
               <Star className="w-3 h-3 fill-current" />
-              Oblíbení
+              {t.sortByFaves}
             </button>
             <button
               type="button"
@@ -142,7 +146,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 }`}
             >
               <Sparkles className="w-3 h-3" />
-              Skóre
+              {t.sortByScore}
             </button>
             <button
               type="button"
@@ -152,8 +156,8 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 : 'text-slate-400 hover:text-white'
                 }`}
             >
-              <MessageSquare className="w-3 h-3 fill-current" />
-              Komentáře
+              <MessageSquare className="w-3 h-3" />
+              {t.sortByComments}
             </button>
             <button
               type="button"
@@ -164,13 +168,35 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 }`}
             >
               <Calendar className="w-3 h-3" />
-              Datum
+              {t.sortByDate}
             </button>
           </div>
         </div>
 
-        <div className="text-[11px] text-slate-500 hidden sm:block">
-          Kliknutím na kartu zapnete nebo vypnete její zobrazení v&nbsp;animaci
+        {/* Rychlý výběr: Vybrat doporučené / Zrušit výběr */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const top12 = new Set(sortedHighlights.slice(0, 12).map(h => h.observation.id));
+              // Trigger state through callback or replace
+              top12.forEach(id => {
+                if (!selectedIds.has(id)) onToggleHighlight(id);
+              });
+            }}
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+          >
+            {t.selectAllBtn}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              selectedIds.forEach(id => onToggleHighlight(id));
+            }}
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+          >
+            {t.deselectAllBtn}
+          </button>
         </div>
       </div>
 
@@ -219,7 +245,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
 
                 {/* Date badge */}
                 <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
-                  {observation.observed_on}
+                  {formatLocalizedDate(observation.observed_on, locale)}
                 </div>
               </div>
 
@@ -272,7 +298,9 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
         <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           {/* Pořadí animace */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400 font-medium">Pořadí:</span>
+            <span className="text-xs text-slate-400 font-medium">
+              {locale === 'cs' ? 'Pořadí:' : 'Sequence:'}
+            </span>
             <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               <button
                 type="button"
@@ -282,7 +310,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                   : 'text-slate-400 hover:text-white'
                   }`}
               >
-                Datum pozorování
+                {locale === 'cs' ? 'Datum pozorování' : 'Observation date'}
               </button>
               <button
                 type="button"
@@ -292,7 +320,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                   : 'text-slate-400 hover:text-white'
                   }`}
               >
-                Datum nahrání
+                {locale === 'cs' ? 'Datum nahrání' : 'Upload date'}
               </button>
             </div>
           </div>
@@ -305,7 +333,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
               onChange={(e) => onFilterObscuredChange(e.target.checked)}
               className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
             />
-            <span>Skrýt zkreslené</span>
+            <span>{locale === 'cs' ? 'Skrýt zkreslené' : 'Hide obscured'}</span>
           </label>
 
           {/* Filtr osamocených vzdálených bodů */}
@@ -316,7 +344,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
               onChange={(e) => onFilterIsolatedChange(e.target.checked)}
               className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
             />
-            <span>Vynechat osamocené (&gt;&nbsp;150&nbsp;km)</span>
+            <span>{locale === 'cs' ? 'Vynechat osamocené (> 150 km)' : 'Skip isolated (> 150 km)'}</span>
           </label>
         </div>
 
@@ -324,17 +352,17 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            Zpět
+            {t.backBtn}
           </button>
           <button
             type="button"
             onClick={onProceed}
             className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs shadow-md transition cursor-pointer"
           >
-            Pokračovat
+            {locale === 'cs' ? 'Pokračovat' : 'Continue'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

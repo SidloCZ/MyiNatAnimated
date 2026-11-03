@@ -3,23 +3,28 @@ import { Search, Sparkles, Calendar, User, AlertCircle } from 'lucide-react';
 import { DEMO_USER, DEMO_OBSERVATIONS } from '../services/demoData';
 import { InatObservation } from '../types/inat';
 import { fetchObservations } from '../services/inatApi';
+import { Language, translations } from '../i18n/translations';
 
 interface SearchFormProps {
   onDataLoaded: (observations: InatObservation[], username: string) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  locale?: Language;
 }
 
 export const SearchForm: React.FC<SearchFormProps> = ({
   onDataLoaded,
   isLoading,
   setIsLoading,
+  locale = 'cs',
 }) => {
   const [username, setUsername] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [progressText, setProgressText] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  const t = translations[locale];
 
   const handlePreset = (preset: 'year' | 'summer' | 'all') => {
     const now = new Date();
@@ -47,32 +52,42 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     e.preventDefault();
     const cleanUsername = username.trim();
     if (!cleanUsername) {
-      setErrorText('Zadejte prosím uživatelské jméno na iNaturalistu.');
+      setErrorText(locale === 'cs' ? 'Zadejte prosím uživatelské jméno na iNaturalistu.' : 'Please enter an iNaturalist username.');
+      return;
+    }
+
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setErrorText(t.invalidDateRange);
       return;
     }
 
     setErrorText(null);
     setIsLoading(true);
-    setProgressText('Zjišťuji počet pozorování...');
+    setProgressText(t.checkingUser);
 
     try {
       const observations = await fetchObservations({
         username: cleanUsername,
         d1: dateFrom || undefined,
         d2: dateTo || undefined,
+        locale,
         maxObservations: 2500,
         onProgress: (loaded, total) => {
-          setProgressText(`Načteno ${loaded} z ${total} pozorování...`);
+          setProgressText(
+            locale === 'cs'
+              ? `Načteno ${loaded} z ${total} pozorování…`
+              : `Loaded ${loaded} of ${total} observations…`
+          );
         },
       });
 
       if (observations.length === 0) {
-        setErrorText('Pro zadaného uživatele a období nebyla nalezena žádná pozorování se souřadnicemi.');
+        setErrorText(t.userNotFound);
       } else {
         onDataLoaded(observations, cleanUsername);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Nastala neočekávaná chyba při načítání dat.';
+      const msg = err instanceof Error ? err.message : (locale === 'cs' ? 'Nastala neočekávaná chyba při načítání dat.' : 'An unexpected error occurred while loading data.');
       setErrorText(msg);
     } finally {
       setIsLoading(false);
@@ -85,18 +100,18 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            Zadání účtu a období
+            {t.searchTitle}
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Zadejte uživatele sítě iNaturalist nebo vyzkoušejte připravené demo.
+            {t.searchDesc}
           </p>
         </div>
         <button
           type="button"
           onClick={handleDemoClick}
           disabled={isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition"
-          title="Načíst ukázková data"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold transition cursor-pointer"
+          title={locale === 'cs' ? 'Načíst ukázková data' : 'Load demo data'}
         >
           <Sparkles className="w-3.5 h-3.5" />
           Demo
@@ -106,7 +121,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Uživatelské jméno
+            {t.usernameLabel}
           </label>
           <div className="relative">
             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -114,7 +129,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="např. jmeno_uzivatele"
+              placeholder={t.usernamePlaceholder}
               disabled={isLoading}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-white placeholder-slate-500 text-sm outline-none transition"
             />
@@ -124,29 +139,29 @@ export const SearchForm: React.FC<SearchFormProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Období pozorování
+              {locale === 'cs' ? 'Období pozorování' : 'Observation timeframe'}
             </label>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => handlePreset('year')}
-                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
-                Minulý rok
+                {locale === 'cs' ? 'Minulý rok' : 'Last year'}
               </button>
               <button
                 type="button"
                 onClick={() => handlePreset('summer')}
-                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
-                Léto
+                {locale === 'cs' ? 'Léto' : 'Summer'}
               </button>
               <button
                 type="button"
                 onClick={() => handlePreset('all')}
-                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
-                Vše
+                {locale === 'cs' ? 'Vše' : 'All'}
               </button>
             </div>
           </div>
@@ -199,7 +214,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
           className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
         >
           <Search className="w-4 h-4" />
-          {isLoading ? 'Načítání…' : 'Načíst'}
+          {isLoading ? t.loading : t.loadStory}
         </button>
       </form>
     </div>

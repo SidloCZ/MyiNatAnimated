@@ -12,10 +12,23 @@ import { SearchForm } from './components/SearchForm';
 import { HighlightPicker } from './components/HighlightPicker';
 import { PrepareProgress } from './components/PrepareProgress';
 import { Player, MAP_STYLES } from './components/Player';
+import { Language, detectDefaultLanguage, translations } from './i18n/translations';
 
 type AppStep = 'search' | 'highlights' | 'preparing' | 'player';
 
 export function App() {
+  const [language, setLanguage] = useState<Language>(() => detectDefaultLanguage());
+  const t = translations[language];
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLanguage(newLang);
+    try {
+      localStorage.setItem('myinat_language', newLang);
+    } catch (_) {
+      // Ignore local storage error
+    }
+  };
+
   const [step, setStep] = useState<AppStep>('search');
   const [username, setUsername] = useState('');
   const [observations, setObservations] = useState<InatObservation[]>([]);
@@ -138,7 +151,7 @@ export function App() {
   const handleStartPreparation = async () => {
     setStep('preparing');
     setPreparePercent(10);
-    setPrepareStatus('Výpočet časové osy a vyhlazené dráhy kamery…');
+    setPrepareStatus(t.prepareCameraTimeline);
 
     // Slight delay so UI renders the progress card
     await new Promise(r => setTimeout(r, 60));
@@ -151,7 +164,7 @@ export function App() {
     });
     setTimeline(tl);
     setPreparePercent(25);
-    setPrepareStatus('Generování vektorových sprite atlasů pro taxony a efekty…');
+    setPrepareStatus(t.prepareSprites);
 
     await new Promise(r => setTimeout(r, 60));
 
@@ -188,20 +201,20 @@ export function App() {
       }))
       .filter((p): p is { id: number; url: string } => typeof p.url === 'string' && p.url.length > 0);
 
-    setPrepareStatus('Přednačítání fotografií vybraných highlightů…');
+    setPrepareStatus(t.preparePhotoSprites);
     const loadedSprites = await preloadSprites(visualsList, photosToLoad, (p) => {
       setPreparePercent(25 + Math.round(p * 30));
     });
     setSprites(loadedSprites);
 
     // 3. Preload map tiles along the entire animation path so there is no dark flicker during playback
-    setPrepareStatus('Přednačítání mapových podkladů podél trasy animace…');
+    setPrepareStatus(t.prepareMapTiles);
     await preloadMapTiles(tl.cameraKeyframes, MAP_STYLES.dark.style, (p: number) => {
       setPreparePercent(55 + Math.round(p * 43));
     });
 
     setPreparePercent(100);
-    setPrepareStatus('Příprava dokončena.');
+    setPrepareStatus(t.prepareDone);
 
     await new Promise(r => setTimeout(r, 120));
     setStep('player');
@@ -225,8 +238,38 @@ export function App() {
             </span>
           </div>
 
-          <div className="text-xs text-slate-400 hidden sm:block">
-            Animovaný mapový příběh pozorování
+          <div className="flex items-center gap-4">
+            <div className="text-xs text-slate-400 hidden sm:block">
+              {t.appSubtitle}
+            </div>
+
+            {/* Language Switcher CZ / EN */}
+            <div className="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/70 text-xs">
+              <button
+                type="button"
+                onClick={() => handleLanguageChange('cs')}
+                className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                  language === 'cs'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Čeština"
+              >
+                CZ
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLanguageChange('en')}
+                className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                  language === 'en'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="English"
+              >
+                EN
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -235,6 +278,7 @@ export function App() {
       <main className={`flex-1 max-w-6xl w-full mx-auto flex flex-col justify-center ${step === 'highlights' ? 'p-2 sm:p-3 overflow-hidden' : 'p-4 sm:p-6'}`}>
         {step === 'search' && (
           <SearchForm
+            locale={language}
             onDataLoaded={handleDataLoaded}
             isLoading={isLoading}
             setIsLoading={setIsLoading}
@@ -243,6 +287,7 @@ export function App() {
 
         {step === 'highlights' && (
           <HighlightPicker
+            locale={language}
             observations={activeObservations}
             suggestedHighlights={suggestedHighlights}
             selectedIds={selectedHighlightIds}
@@ -269,6 +314,7 @@ export function App() {
 
         {step === 'player' && timeline && sprites && (
           <Player
+            locale={language}
             timeline={timeline}
             sprites={sprites}
             username={username}
@@ -279,7 +325,7 @@ export function App() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-500">
-        Data z iNaturalist API &middot; Zvukový engine ve Web Audio API &middot; Bez externích trackerů
+        {t.footerText}
       </footer>
     </div>
   );

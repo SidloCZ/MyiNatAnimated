@@ -69,6 +69,7 @@ export interface FetchOptions {
   d2?: string;
   maxObservations?: number;
   useCache?: boolean;
+  locale?: 'cs' | 'en';
   onProgress?: (loaded: number, total: number) => void;
   signal?: AbortSignal;
 }
@@ -103,12 +104,13 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
     d2,
     maxObservations = 5000,
     useCache = true,
+    locale = 'cs',
     onProgress,
     signal,
   } = options;
 
   if (useCache) {
-    const cached = await getCachedObservations(username, d1, d2);
+    const cached = await getCachedObservations(username, d1, d2, locale);
     if (cached && cached.length > 0) {
       if (onProgress) onProgress(cached.length, cached.length);
       return cached;
@@ -140,7 +142,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
       order_by: 'id',
       order: 'asc',
       per_page: perPage.toString(),
-      locale: 'cs',
+      locale,
     });
     if (d1) params.append('d1', d1);
     if (d2) params.append('d2', d2);
@@ -191,7 +193,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
   });
 
   // Save to cache
-  await setCachedObservations(username, d1, d2, allObservations);
+  await setCachedObservations(username, d1, d2, allObservations, locale);
 
   return allObservations;
 }
