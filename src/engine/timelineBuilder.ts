@@ -120,11 +120,17 @@ export function buildTimeline(
           const flightDuration = calculateFlightDuration(dist);
           if (flightDuration > 0) {
             currentAnimTime += flightDuration;
+            // Progresivní hlasitost whoosh efektu podle vzdálenosti:
+            // Pro malé skoky (15-50 km) jen lehký závan (0.12 - 0.18), pro velké přelety plný zvuk (0.28 - 0.35)
+            const whooshGain = dist <= 100
+              ? 0.12 + 0.08 * ((dist - 15) / 85)
+              : Math.min(0.35, 0.20 + 0.15 * Math.min(1.0, (dist - 100) / 400));
+
             // Whoosh sound plays at peak cruise altitude / midpoint
             soundCues.push({
               t: currentAnimTime - flightDuration * 0.5,
               type: 'whoosh',
-              gain: 0.3,
+              gain: Math.round(whooshGain * 100) / 100,
             });
           }
         }

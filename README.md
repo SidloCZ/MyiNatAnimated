@@ -1,67 +1,69 @@
+[Česká verze / Czech version](docs/README.cs.md)
+
 # MyiNatAnimated
 
-Animovaný mapový příběh z vašich pozorování na iNaturalist.
+Animated map stories from your iNaturalist observations.
 
-Aplikace promění vaše terénní nálezy, expedice nebo celoroční bilanci do plynulého kinematografického videa či animovaného GIFu s reaktivním pohybem kamery, zvukovými efekty a prezentací nejzajímavějších druhů.
+Transform your field findings, expeditions, or annual recaps into a smooth cinematographic video or animated GIF featuring reactive camera motion, sound effects, and highlights of key species.
 
-![Ukázka animovaného mapového příběhu](test/myinat_antsczech_16x9.gif)
-
----
-
-# ČÁST I: PŘEHLED, VÝSTUPY A NÁVOD K POUŽITÍ
-
-## K čemu aplikace slouží
-
-Jste aktivní na iNaturalistu a chcete se podělit o svá pozorování v poutavém video formátu? **MyiNatAnimated** načte veřejná data libovolného uživatele za vybrané období a vytvoří dynamickou animovanou mapu:
-
-- **Dynamická kamera:** Automaticky sleduje trasu vašich nálezů. Na místech s více pozorováními plynule přibližuje detaily, při delších přesunech (např. přejezd mezi pohořími či státy) provede elegantní vysoký přelet s oddálením.
-- **Dopaminové audio-vizuální efekty:** Každé zaznamenané pozorování na mapě pulzuje a vystřelí tematickou ikonu taxonu (rostliny, hmyz, houby, ptáci apod.) s barevným laděním podle iNaturalistu.
-- **Procedurální zvukový doprovod:** Web Audio syntezátor generuje pentatonické tóny při každém nálezu, slavnostní akordy při objevení klíčových druhů a větrný svist při přeletech kamery.
-- **Výběr highlightů:** Chytrý algoritmus automaticky vybere nejzajímavější nálezy (podle oblíbenosti, komentářů a statusu *Research Grade*), které si můžete v přehledné mřížce sami doupravit.
-- **100% v prohlížeči bez registrace:** Veškerý výpočet, příprava grafiky i kódování videa probíhá přímo na vašem zařízení. Žádná data se neposílají na cizí servery.
+![Animated map story preview](test/myinat_antsczech_16x9.gif)
 
 ---
 
-## Co aplikace vygeneruje
+# PART I: OVERVIEW, OUTPUTS, AND USER GUIDE
 
-Z aplikace můžete přímo stáhnout:
+## What the Application Does
 
-1. **MP4 video se synchronizovaným zvukem:**
-   - Kódováno v H.264 videu s AAC zvukem (ve vysokém rozlišení).
-   - Výběr poměru stran jedním kliknutím:
-     - **16:9 (na šířku):** Ideální pro YouTube, prezentace a televize.
-     - **9:16 (na výšku):** Optimalizováno pro Instagram Reels, TikTok a YouTube Shorts.
-     - **1:1 (čtverec):** Vhodné pro příspěvky na sociální sítě.
-2. **Animovaný GIF:**
-   - Vhodný pro rychlé sdílení na fórech, v blozích nebo chatu.
-3. **Interaktivní zážitek na webu:**
-   - Možnost přehrávat mapový příběh přímo v prohlížeči, libovolně zastavovat, posouvat časovou osu a přepínat mezi mapovými styly (Dark, Satelitní, Voyage, Světlý).
+Are you active on iNaturalist and want to share your observations in an engaging video format? **MyiNatAnimated** loads public data for any user over a selected time period and creates a dynamic animated map:
+
+- **Dynamic Camera:** Automatically tracks the trajectory of your findings. It smoothly zooms in on dense clusters of observations and performs an elegant high-altitude sweeping pan and zoom-out during long transitions (such as traveling across mountain ranges or country borders).
+- **Audio-Visual Effects:** Each recorded observation pulses on the map and pops up a themed taxon icon (plants, insects, fungi, birds, etc.) colored to match the iNaturalist aesthetic.
+- **Procedural Sound Design:** A Web Audio synthesizer produces pentatonic chime notes on every observation, fanfare chords upon discovering key species, and ambient wind rush during swift camera flights.
+- **Highlight Selection:** A smart scoring algorithm automatically selects standout observations (based on favorites, comments, and *Research Grade* status), which you can curate in an interactive grid.
+- **100% Client-Side in the Browser:** All data computation, graphic compositing, and video encoding occur directly on your local device. No user data is sent to external servers.
 
 ---
 
-## Jak aplikaci spustit
+## Generated Outputs
 
-### 1. Online v prohlížeči (bez instalace)
-Aplikace běží online na GitHub Pages:
+Directly download from the app:
+
+1. **MP4 Video with Synchronized Audio:**
+   - Encoded in H.264 video with AAC audio (in high resolution).
+   - One-click aspect ratio selection:
+     - **16:9 (Landscape):** Ideal for YouTube, presentations, and desktop displays.
+     - **9:16 (Portrait):** Optimized for Instagram Reels, TikTok, and YouTube Shorts.
+     - **1:1 (Square):** Suited for social media timeline posts.
+2. **Animated GIF:**
+   - Lightweight and convenient for forum posts, blog articles, and chat platforms.
+3. **Interactive Web Experience:**
+   - Play the interactive map story directly in your browser, with pause controls, a scrubbable timeline, and switchable map styles (Dark, Satellite, Voyage, Light).
+
+---
+
+## How to Run the App
+
+### 1. Online in the Browser (No Installation Required)
+The application is hosted online via GitHub Pages:
 **[https://sidlocz.github.io/MyiNatAnimated/](https://sidlocz.github.io/MyiNatAnimated/)**
 
-### 2. Lokální spuštění na vlastním počítači (Windows / macOS / Linux)
+### 2. Running Locally (Windows / macOS / Linux)
 
-Vzhledem k tomu, že moderní webové aplikace využívají Web Workery, mapové podklady a ES moduly, nelze soubor `index.html` otevírat pouhým poklepáním přes protokol `file://` (prohlížeče z bezpečnostních důvodů blokují CORS). Pro lokální běh postupujte takto:
+Because modern web applications rely on Web Workers, vector map tiles, and ES modules, opening `index.html` directly via the `file://` protocol is blocked by browsers due to CORS security policies. Follow these steps to run locally:
 
-1. Nainstalujte si [Node.js](https://nodejs.org/) (verze 18 nebo vyšší).
-2. Otevřete složku projektu a nainstalujte potřebné knihovny:
+1. Install [Node.js](https://nodejs.org/) (version 18 or higher).
+2. Open the project root folder and install dependencies:
    ```bash
    npm install
    ```
-3. Spusťte aplikaci jedním z těchto způsobů:
-   - **Na Windows:** Poklepejte na soubor `start.bat`.
-   - **V terminálu:**
+3. Launch the application using one of the following methods:
+   - **On Windows:** Double-click `start.bat`.
+   - **From the terminal:**
      ```bash
      npm run dev
      ```
-     Otevřete prohlížeč na adrese `http://localhost:3000`.
-   - **Produkční náhled:**
+     Open your browser at `http://localhost:3000`.
+   - **Production preview:**
      ```bash
      npm run build
      npm run preview
@@ -69,76 +71,76 @@ Vzhledem k tomu, že moderní webové aplikace využívají Web Workery, mapové
 
 ---
 
-## Návod krok za krokem: Jak vytvořit svůj příběh
+## Step-by-Step Guide: Creating Your Story
 
-### Krok 1: Výběr uživatele a období
-Do pole zadejte své uživatelské jméno na iNaturalistu (případně jméno libovolného jiného přírodovědce). Můžete zvolit konkrétní časové rozmezí, nebo využít rychlá tlačítka (*Minulý rok*, *Léto*, *Vše*). Chcete-li si aplikaci jen vyzkoušet, klikněte na tlačítko **Demo**, které okamžitě načte ukázková data.
+### Step 1: User and Date Range Selection
+Enter your iNaturalist username (or any naturalist's username). Choose a specific date range or use the quick preset buttons (*Last Year*, *Summer*, *All*). If you want to test the app right away, click the **Demo** button to instantly load sample data.
 
-*(Obrázek obrazovky: `docs/images/01_vyhledavani.png`)*
+*(Screenshot: `docs/images/01_vyhledavani.png`)*
 
-### Krok 2: Výběr highlightů a filtrování
-Aplikace seřadí pozorování a navrhne až 12 nejvýznamnějších nálezů.
-- Kliknutím na kartu druhu můžete pozorování přidat do výběru nebo jej odebrat.
-- **Filtr zastřených souřadnic:** Umožňuje vyloučit druhy se záměrně znepřesněnou polohou (ohrožené taxony), aby v mapě nevznikaly umělé skoky.
-- **Filtr izolovaných nálezů:** Umožňuje skrýt ojedinělá pozorování vzdálená stovky kilometrů od hlavní trasy, aby kamera zůstala plynule zaměřena na hlavní lokalitu.
-- **Řazení:** Zvolte, zda se má příběh odvíjet podle skutečného data nálezu v terénu, nebo podle data nahrání na iNaturalist.
+### Step 2: Highlight Selection and Filtering
+The app sorts observations and suggests up to 12 top highlight findings.
+- Click any taxon card to toggle its inclusion in the highlight reel.
+- **Obscured Coordinates Filter:** Exclude taxa with intentionally obscured coordinates (threatened species) to prevent sudden camera jumps.
+- **Isolated Findings Filter:** Hide solitary outlier observations located hundreds of kilometers away from the main route to keep camera movements smooth and focused.
+- **Sorting Order:** Choose whether the story unfolds chronologically by the actual date observed in the field, or by the upload date on iNaturalist.
 
-*(Obrázek obrazovky: `docs/images/02_vyber_highlightu.png`)*
+*(Screenshot: `docs/images/02_vyber_highlightu.png`)*
 
-### Krok 3: Přehrávání a ovládání mapy
-Po kliknutí na *Vytvořit příběh* proběhne rychlá příprava (vygenerování klíčových snímků kamery, atlasu vektorových ikon a přednačtení mapových dlaždic). Následně se spustí samotný přehrávač:
-- Přehrávání můžete kdykoliv pozastavit mezerníkem nebo tlačítkem.
-- Pomocí posuvníku lze okamžitě přeskočit na libovolný okamžik trasy.
-- V pravém horním rohu můžete přepínat styl mapy (Temná, Satelitní, Kontrastní).
+### Step 3: Playback and Map Controls
+Clicking *Create Story* triggers brief asset preparation (calculating camera keyframes, rasterizing vector icon sprites, and pre-caching map tiles). The interactive player then starts:
+- Pause or resume playback anytime using the spacebar or on-screen controls.
+- Use the timeline scrubber to immediately jump to any point in the journey.
+- Switch map styles (Dark, Satellite, Voyage, Light) from the control panel in the top-right corner.
 
-*(Obrázek obrazovky: `docs/images/03_prehravac_a_mapa.png`)*
+*(Screenshot: `docs/images/03_prehravac_a_mapa.png`)*
 
-### Krok 4: Export videa a GIFu
-Klikněte na tlačítko **Exportovat**. Otevře se okno s volbou parametrů:
-- Vyberte formát: **MP4 video se zvukem** nebo **animovaný GIF**.
-- Zvolte poměr stran: **16:9**, **9:16 (Shorts/Reels)** nebo **1:1**.
-- Klikněte na *Zahájit export*. Během několika sekund se soubor deterministicky vyrenderuje a nabídne ke stažení do počítače.
+### Step 4: Exporting Video and GIF
+Click the **Export** button to open the export configuration dialog:
+- Select your target format: **MP4 Video with Audio** or **Animated GIF**.
+- Choose your aspect ratio: **16:9**, **9:16 (Shorts/Reels)**, or **1:1**.
+- Click *Start Export*. The recording renders deterministically in a few seconds and prompts you to download the finished file.
 
-*(Obrázek obrazovky: `docs/images/04_dialog_exportu.png`)*
+*(Screenshot: `docs/images/04_dialog_exportu.png`)*
 
 ---
 
-# ČÁST II: ARCHITEKTURA A TECHNICKÉ INFORMACE
+# PART II: ARCHITECTURE AND TECHNICAL DETAILS
 
-## Technologický stack
+## Technology Stack
 
-- **Frontendové jádro:** React 18, TypeScript, Vite
-- **Styling a UI:** Tailwind CSS, Lucide React (inline SVG ikony)
-- **Mapové prostředí:** MapLibre GL JS s bezplatnými vektorovými styly z OpenFreeMap (bez nutnosti registrace a API klíčů)
-- **Zvuková syntéza:** Web Audio API (procedurální generování tónů bez externích zvukových souborů)
-- **Enkódování médií:** `mp4-muxer` a WebCodecs API (s fallbackem na `MediaRecorder`), `gifenc` pro animované GIFy
-- **Lokální mezipaměť:** IndexedDB přes knihovnu `idb-keyval`
-- **Testování:** Vitest
+- **Frontend Core:** React 18, TypeScript, Vite
+- **Styling and UI:** Tailwind CSS, Lucide React (inline SVG icons)
+- **Map Engine:** MapLibre GL JS with free vector tile styles from OpenFreeMap (no API keys or registrations required)
+- **Audio Synthesis:** Web Audio API (procedural synthesis without external audio files)
+- **Media Encoding:** `mp4-muxer` and WebCodecs API (with fallback to `MediaRecorder`), `gifenc` for animated GIFs
+- **Local Storage / Cache:** IndexedDB via `idb-keyval`
+- **Testing:** Vitest
 
-## Architektura animačního jádra
+## Animation Core Architecture
 
-Aplikace je rozdělena do modulárních komponent v adresáři `src/`:
+The codebase is organized into modular components under `src/`:
 
 - `src/engine/cameraDirector.ts`:
-  - Algoritmus kinematografické kamery. Vypočítává vážené těžiště pozorování v čase, provádí plynulé vyhlazování (lerp dampening), shlukování na počátku trasy a obloukové přelety s oddálením při velkých vzdálenostech.
+  - Cinematographic camera director. Computes observation center of mass over time, applies smooth dampening (spring/lerp), resolves initial clusters, and triggers elevated arc pans for long distances.
 - `src/engine/dopamineCanvas.ts`:
-  - Canvasová vrstva vykreslující rázové vlny, pulzující světelné kruhy a trajektorii pohybu.
+  - Canvas overlay layer rendering shockwaves, radiant pulse rings, and dynamic trail lines.
 - `src/engine/spriteAtlas.ts`:
-  - Převod vektorových SVG taxonových ikon do rastrového atlasu pro maximální vykreslovací výkon (60 fps) bez opakovaného parsování DOM prvků.
+  - Rasterizes inline SVG taxon glyphs into an atlas bitmap for optimal rendering performance (60 fps) without DOM thrashing.
 - `src/engine/soundEngine.ts`:
-  - Vícedenní procedurální syntezátor. Využívá frekvenční oscilátory a generátory šumu pro zvuk větru při rychlém přeletu kamery.
-- `src/engine/videoExporter.ts` a `src/engine/gifExporter.ts`:
-  - Deterministický offline záznamník. Během exportu krokuje čas po přesných časových úsecích (nezávisle na reálné rychlosti procesoru), což zaručuje dokonale plynulý výstup bez trhání i na méně výkonných počítačích.
-- `src/services/inatApi.ts` a `src/services/requestQueue.ts`:
-  - Šetrné načítání z iNaturalist API v1. Dodržuje limit maximálně 1 požadavek za 1,1&nbsp;s, využívá kurzorové stránkování `id_above` a ukládá kompletní odpovědi do IndexedDB mezipaměti.
+  - Polyphonic procedural sound synthesizer. Uses frequency oscillators and noise generators to simulate pentatonic chimes and atmospheric wind speed during rapid flights.
+- `src/engine/videoExporter.ts` and `src/engine/gifExporter.ts`:
+  - Deterministic offline renderers. Steps simulated time in fixed increments regardless of hardware CPU/GPU speed, ensuring jitter-free output on any system.
+- `src/services/inatApi.ts` and `src/services/requestQueue.ts`:
+  - Rate-limited iNaturalist API v1 client. Enforces a respectful maximum request rate of 1 request per 1.1 s, cursor pagination using `id_above`, and stores full responses in IndexedDB.
 
 ---
 
-## Příkazy pro vývojáře
+## Developer Commands
 
-- **Instalace závislostí:** `npm install`
-- **Spuštění vývojového serveru:** `npm run dev`
-- **Spuštění testovací sady:** `npm test`
-- **Typová kontrola (linter):** `npm run lint`
-- **Sestavení produkčního balíčku:** `npm run build`
-- **Lokální náhled produkčního sestavení:** `npm run preview`
+- **Install dependencies:** `npm install`
+- **Start development server:** `npm run dev`
+- **Run test suite:** `npm test`
+- **Type check and lint:** `npm run lint`
+- **Build production bundle:** `npm run build`
+- **Preview production build:** `npm run preview`

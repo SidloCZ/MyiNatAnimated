@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDistanceKm, interpolateCamera, detectWalkCluster, generateCameraKeyframes } from './cameraDirector';
+import {
+  calculateDistanceKm,
+  interpolateCamera,
+  detectWalkCluster,
+  generateCameraKeyframes,
+  calculateFlightDuration,
+  calculateProgressiveZoomDip,
+} from './cameraDirector';
 import { CameraKeyframe, ObsEvent } from '../types/timeline';
 import { DEMO_OBSERVATIONS } from '../services/demoData';
 import { buildTimeline } from './timelineBuilder';
@@ -115,5 +122,38 @@ describe('cameraDirector', () => {
     const keyframes = generateCameraKeyframes(scatteredEvents, 4);
     // Standard regional zoom
     expect(keyframes[0].zoom).toBeCloseTo(10.5, 0.5);
+  });
+
+  it('progressively scales flight duration and zoomout dip based on distance', () => {
+    // 1. Under 15 km: no flight needed (handled seamlessly by local spline)
+    expect(calculateFlightDuration(10)).toBe(0);
+    expect(calculateProgressiveZoomDip(10, 13)).toBe(0);
+
+    // 2. Short flights (15-50 km): quick hop (0.9 - 1.4s) with minimal zoom dip (0.4 - 1.0)
+    const dur25 = calculateFlightDuration(25);
+    const dip25 = calculateProgressiveZoomDip(25, 13);
+    expect(dur25).toBeGreaterThanOrEqual(0.9);
+    expect(dur25).toBeLessThanOrEqual(1.4);
+    expect(dip25).toBeGreaterThanOrEqual(0.4);
+    expect(dip25).toBeLessThanOrEqual(1.0);
+
+    const dur50 = calculateFlightDuration(50);
+    const dip50 = calculateProgressiveZoomDip(50, 13);
+    expect(dur50).toBeCloseTo(1.4, 0.1);
+    expect(dip50).toBeCloseTo(1.0, 0.1);
+
+    // 3. Medium flights (50-100 km): fast transfer (1.4 - 2.2s) with moderate overview (1.0 - 2.0)
+    const dur80 = calculateFlightDuration(80);
+    const dip80 = calculateProgressiveZoomDip(80, 13);
+    expect(dur80).toBeGreaterThanOrEqual(1.4);
+    expect(dur80).toBeLessThanOrEqual(2.2);
+    expect(dip80).toBeGreaterThanOrEqual(1.0);
+    expect(dip80).toBeLessThanOrEqual(2.0);
+
+    // 4. Long / cross-country flights (> 200 km): grand overview with full dip
+    const dur215 = calculateFlightDuration(215);
+    const dip215 = calculateProgressiveZoomDip(215, 12);
+    expect(dur215).toBeGreaterThan(4.0);
+    expect(dip215).toBeGreaterThan(5.0);
   });
 });

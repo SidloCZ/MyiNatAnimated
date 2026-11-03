@@ -89,11 +89,69 @@ export function detectWalkCluster(
 
 export function calculateFlightDuration(distKm: number): number {
   if (distKm < 15) return 0;
-  if (distKm < 50) return 2.8;
-  if (distKm < 150) return 3.8;
-  if (distKm < 400) return 5.0;
-  if (distKm < 1200) return 6.2;
-  return 7.5; // Long distance or cross-country flights
+  if (distKm <= 50) {
+    // 15-50 km: Velmi rychlý, svižný přesun (0.9 s až 1.4 s)
+    const t = 0.9 + 0.5 * ((distKm - 15) / 35);
+    return Math.round(t * 10) / 10;
+  }
+  if (distKm <= 100) {
+    // 50-100 km: Rychlý přesun (1.4 s až 2.2 s)
+    const t = 1.4 + 0.8 * ((distKm - 50) / 50);
+    return Math.round(t * 10) / 10;
+  }
+  if (distKm <= 250) {
+    // 100-250 km: Meziměstský přelet přes republiku (2.2 s až 5.2 s)
+    const t = 2.2 + 3.0 * ((distKm - 100) / 150);
+    return Math.round(t * 10) / 10;
+  }
+  if (distKm <= 1000) {
+    // 250-1000 km: Vnitrostátní až celoevropský přelet (5.2 s až 6.2 s)
+    const t = 5.2 + 1.0 * ((distKm - 250) / 750);
+    return Math.round(t * 10) / 10;
+  }
+  // 1000+ km: Mezistátní a kontinentální přelet (6.2 s až max 7.2 s)
+  const t = 6.2 + 1.0 * Math.min(1.0, Math.log10(distKm / 1000) / Math.log10(10));
+  return Math.round(t * 10) / 10;
+}
+
+/**
+ * Progresivní výpočet zdvihu kamery (zoomDip / odzoomování) podle vzdálenosti:
+ * - Do 50 km: minimální zdvih (0.4 až 1.0 úrovně zoomu) pro zachování kontextu terénu
+ * - 50-100 km: mírný nadhled (1.0 až 2.0 úrovně zoomu)
+ * - 100-200 km: přechod do celostátního nadhledu (2.0 až 5.2 úrovně zoomu)
+ * - 200+ km: vysoký kontinentální / globální přelet (5.2 až 6.6 úrovně zoomu)
+ */
+export function calculateProgressiveZoomDip(
+  distKm: number,
+  midBaseZoom: number,
+  minZoom = 2.5
+): number {
+  if (distKm < 15) return 0;
+
+  let dip: number;
+  if (distKm <= 50) {
+    // 15-50 km: Velmi malý, decentní zdvih kamery (0.4 až 1.0 úrovně zoomu)
+    dip = 0.4 + 0.6 * ((distKm - 15) / 35);
+  } else if (distKm <= 100) {
+    // 50-100 km: Mírný zdvih (1.0 až 2.0 úrovně zoomu)
+    dip = 1.0 + 1.0 * ((distKm - 50) / 50);
+  } else if (distKm <= 200) {
+    // 100-200 km: Plynulý přechod do celostátního nadhledu (2.0 až 5.8)
+    dip = 2.0 + 3.8 * ((distKm - 100) / 100);
+  } else if (distKm <= 250) {
+    // 200-250 km: Celostátní nadhled (5.8 až 6.2)
+    dip = 5.8 + 0.4 * ((distKm - 200) / 50);
+  } else if (distKm <= 800) {
+    // 250-800 km: Celoevropský přelet (6.2 až 7.0)
+    dip = 6.2 + 0.8 * ((distKm - 250) / 550);
+  } else {
+    // 800+ km: Globální nadhled
+    dip = 7.0 + 1.2 * Math.min(1.0, Math.log10(distKm / 800) / Math.log10(10));
+  }
+
+  // Omezení, aby odzoomování nikdy nepřekročilo globální minZoom
+  const maxAllowedDip = Math.max(0.2, midBaseZoom - minZoom);
+  return Math.min(dip, maxAllowedDip);
 }
 
 // Haversine distance in km between two [lng, lat] points
@@ -169,8 +227,8 @@ export function generateCameraKeyframes(
     const timeDelta = prevEv ? Math.max(0.01, ev.t - prevEv.t) : 0.5;
 
     if (distToPrev >= arcFlyDistanceKm) {
-      // Long-distance transition: smooth cinematic arc flight
-      const flightDuration = Math.max(1.8, ev.t - (prevEv ? prevEv.t : ev.t - 2.0));
+      // Long-distance transition: smooth cinematic arc flight with progressive duration and zoomDip
+      const flightDuration = Math.max(0.6, prevEv ? ev.t - prevEv.t : calculateFlightDuration(distToPrev));
       const flightStart = ev.t - flightDuration;
 
       const startCenter: [number, number] = [currentCenter[0], currentCenter[1]];
@@ -181,14 +239,8 @@ export function generateCameraKeyframes(
         ? Math.max(minZoom, Math.min(maxZoom, arrivalCluster.recommendedZoom))
         : Math.min(maxZoom, 11.5);
 
-      // Google Earth style cruise altitude:
-      // Sub-regional (15-50 km): zoom ~8-9.5
-      // Regional / national (50-200 km): zoom ~6.0-7.5
-      // Continental (200-1000 km): zoom ~4.0-5.5
-      // Hemispheric (>1000 km): zoom ~2.5-3.5
-      const targetCruiseZoom = Math.max(minZoom, Math.min(8.5, 10.0 - Math.log2(distToPrev / 15) * 1.05));
       const midBaseZoom = (startZoom + targetZoom) / 2;
-      const zoomDip = Math.max(1.8, midBaseZoom - targetCruiseZoom);
+      const zoomDip = calculateProgressiveZoomDip(distToPrev, midBaseZoom, minZoom);
 
       // Record flight start with full flight parameters
       keyframes.push({
@@ -311,7 +363,8 @@ export function interpolateCamera(keyframes: CameraKeyframe[], t: number): Camer
 
     const startPitch = k1.pitch;
     const targetPitch = k1.flight.targetPitch;
-    const pitch = Math.max(0, startPitch + (targetPitch - startPitch) * s - 10 * bell);
+    const pitchDip = Math.min(10, k1.flight.zoomDip * 2.0);
+    const pitch = Math.max(0, startPitch + (targetPitch - startPitch) * s - pitchDip * bell);
 
     return {
       t,
