@@ -48,7 +48,7 @@ export const translations = {
 
     // HighlightPicker
     highlightTitle: 'Výběr významných pozorování (Highlightů)',
-    highlightSubtitle: 'Během animace se u vybraných bodů kamera přiblíží a zobrazí detailní kartu s fotografií. Můžete vybrat až 12 highlightů.',
+    highlightSubtitle: 'Během animace se u vybraných bodů kamera přiblíží a zobrazí detailní kartu s fotografií. Výběr se progresivně přizpůsobuje počtu pozorování.',
     selectedCount: 'Vybráno',
     sortLabel: 'Řadit podle:',
     sortByFaves: 'Oblíbenost',
@@ -150,7 +150,7 @@ export const translations = {
 
     // HighlightPicker
     highlightTitle: 'Select featured observations (Highlights)',
-    highlightSubtitle: 'During the animation, the camera will zoom in on chosen points and display a card with photo. You can select up to 12 highlights.',
+    highlightSubtitle: 'During the animation, the camera zooms in on chosen points and displays a detail card with photo. Selection scales progressively with observation count.',
     selectedCount: 'Selected',
     sortLabel: 'Sort by:',
     sortByFaves: 'Favorites',

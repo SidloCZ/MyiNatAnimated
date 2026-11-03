@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateObservationScore, pickSuggestedHighlights } from './highlightScorer';
+import { calculateObservationScore, pickSuggestedHighlights, getRecommendedHighlightCounts } from './highlightScorer';
 import { InatObservation } from '../types/inat';
 
 describe('highlightScorer', () => {
@@ -138,5 +138,46 @@ describe('highlightScorer', () => {
     expect(ids).toContain(1);
     expect(ids).toContain(2);
     expect(ids).not.toContain(3);
+  });
+
+  describe('getRecommendedHighlightCounts', () => {
+    it('returns zero for 0 or negative observations', () => {
+      expect(getRecommendedHighlightCounts(0)).toEqual({ recommendedCount: 0, maxPoolSize: 0 });
+      expect(getRecommendedHighlightCounts(-5)).toEqual({ recommendedCount: 0, maxPoolSize: 0 });
+    });
+
+    it('scales progressively based on observation counts', () => {
+      // 1 observation: minimum 1
+      const count1 = getRecommendedHighlightCounts(1);
+      expect(count1.recommendedCount).toBe(1);
+      expect(count1.maxPoolSize).toBe(1);
+
+      // 10 observations: 1-2 highlights
+      const count10 = getRecommendedHighlightCounts(10);
+      expect(count10.recommendedCount).toBeGreaterThanOrEqual(1);
+      expect(count10.recommendedCount).toBeLessThanOrEqual(2);
+      expect(count10.maxPoolSize).toBeGreaterThanOrEqual(count10.recommendedCount);
+
+      // 20 observations: exactly 2 highlights as requested
+      const count20 = getRecommendedHighlightCounts(20);
+      expect(count20.recommendedCount).toBe(2);
+      expect(count20.maxPoolSize).toBeGreaterThan(count20.recommendedCount);
+
+      // 100 observations: 5-8 highlights (e.g. 7)
+      const count100 = getRecommendedHighlightCounts(100);
+      expect(count100.recommendedCount).toBeGreaterThanOrEqual(5);
+      expect(count100.recommendedCount).toBeLessThanOrEqual(8);
+      expect(count100.maxPoolSize).toBeGreaterThan(count100.recommendedCount);
+
+      // 500 observations: 15-20 highlights
+      const count500 = getRecommendedHighlightCounts(500);
+      expect(count500.recommendedCount).toBeGreaterThanOrEqual(15);
+      expect(count500.recommendedCount).toBeLessThanOrEqual(22);
+
+      // 1000 observations: ~25-30 highlights
+      const count1000 = getRecommendedHighlightCounts(1000);
+      expect(count1000.recommendedCount).toBeGreaterThanOrEqual(25);
+      expect(count1000.recommendedCount).toBeLessThanOrEqual(32);
+    });
   });
 });

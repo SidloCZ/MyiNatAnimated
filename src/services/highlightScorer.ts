@@ -20,8 +20,48 @@ export function calculateObservationScore(obs: InatObservation): number {
   return score;
 }
 
-export function pickSuggestedHighlights(observations: InatObservation[], maxHighlights = 12): HighlightItem[] {
+/**
+ * Vypočítá doporučený počet předvybraných highlightů pro animaci a maximální
+ * velikost nabídky (kandidátů k výběru) na základě celkového počtu pozorování.
+ *
+ * Progresivní křivka (sublineární mocninná f(N) = 0.38 * N^0.62):
+ *  - 1–10 pozorování:   1–2 highlighty (nabídka 1–5)
+ *  - 20 pozorování:     2 highlighty (nabídka 7)
+ *  - 50 pozorování:     4 highlighty (nabídka 11)
+ *  - 100 pozorování:    7 highlightů (nabídka 16)
+ *  - 250 pozorování:    12 highlightů (nabídka 25)
+ *  - 500 pozorování:    18 highlightů (nabídka 36)
+ *  - 1 000 pozorování:  28 highlightů (nabídka 50)
+ *  - 2 500 pozorování:  48 highlightů (nabídka 86)
+ */
+export function getRecommendedHighlightCounts(totalObservations: number): {
+  recommendedCount: number;
+  maxPoolSize: number;
+} {
+  if (totalObservations <= 0) {
+    return { recommendedCount: 0, maxPoolSize: 0 };
+  }
+  if (totalObservations === 1) {
+    return { recommendedCount: 1, maxPoolSize: 1 };
+  }
+
+  // Cílový doporučený počet vybraných highlightů pro plynulou animaci
+  const rawTarget = Math.round(0.38 * Math.pow(totalObservations, 0.62));
+  const recommendedCount = Math.max(1, Math.min(totalObservations, rawTarget));
+
+  // Velikost nabídky pro uživatelský výběr v mřížce (kandidátský pool)
+  const rawPool = Math.round(Math.max(recommendedCount * 1.8, Math.sqrt(totalObservations) * 1.6));
+  const maxPoolSize = Math.max(recommendedCount, Math.min(totalObservations, rawPool));
+
+  return { recommendedCount, maxPoolSize };
+}
+
+export function pickSuggestedHighlights(observations: InatObservation[], maxHighlights?: number): HighlightItem[] {
   if (observations.length === 0) return [];
+
+  const limit = maxHighlights !== undefined
+    ? maxHighlights
+    : getRecommendedHighlightCounts(observations.length).maxPoolSize;
 
   // Všechna pozorování (včetně zvukových) jsou rovnocenně ohodnocena
   const scored: HighlightItem[] = observations.map(obs => ({
@@ -29,7 +69,7 @@ export function pickSuggestedHighlights(observations: InatObservation[], maxHigh
     score: calculateObservationScore(obs),
   }));
 
-  if (scored.length <= maxHighlights) {
+  if (scored.length <= limit) {
     return scored.sort((a, b) => {
       const timeA = new Date(a.observation.observed_on || a.observation.created_at).getTime();
       const timeB = new Date(b.observation.observed_on || b.observation.created_at).getTime();
@@ -47,8 +87,8 @@ export function pickSuggestedHighlights(observations: InatObservation[], maxHigh
     return b.score - a.score;
   });
 
-  // Výběr nejvýznamnějších pozorování (až do maxHighlights, výchozí 12)
-  const selected = scored.slice(0, maxHighlights);
+  // Výběr nejvýznamnějších pozorování až do limitu
+  const selected = scored.slice(0, limit);
 
   // Výsledné highlighty seřadíme chronologicky pro timeline animace
   return selected.sort((a, b) => {

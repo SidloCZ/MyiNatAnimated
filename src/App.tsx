@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { InatObservation, HighlightItem } from './types/inat';
 import { TimelineData } from './types/timeline';
 import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
-import { pickSuggestedHighlights } from './services/highlightScorer';
+import { pickSuggestedHighlights, getRecommendedHighlightCounts } from './services/highlightScorer';
 import { buildTimeline } from './engine/timelineBuilder';
 import { preloadMapTiles } from './engine/tilePreloader';
 import { getTaxonVisuals } from './assets/icons/taxaIcons';
@@ -81,7 +81,8 @@ export function App() {
   }, [observations, filterObscured, sequenceType]);
 
   const updateHighlightsForPool = (pool: InatObservation[]) => {
-    const highlights = pickSuggestedHighlights(pool, 12);
+    const { recommendedCount, maxPoolSize } = getRecommendedHighlightCounts(pool.length);
+    const highlights = pickSuggestedHighlights(pool, maxPoolSize);
     setSuggestedHighlights(highlights);
 
     const activeIds = new Set(pool.map(o => o.id));
@@ -91,7 +92,7 @@ export function App() {
         if (activeIds.has(id)) next.add(id);
       }
       if (next.size === 0) {
-        highlights.slice(0, 8).forEach(h => next.add(h.observation.id));
+        highlights.slice(0, recommendedCount).forEach(h => next.add(h.observation.id));
       }
       return next;
     });
@@ -103,11 +104,12 @@ export function App() {
     setObservations(loadedObs);
 
     const pool = getFilteredPool(loadedObs, filterObscured, filterIsolated, sequenceType);
-    const highlights = pickSuggestedHighlights(pool, 12);
+    const { recommendedCount, maxPoolSize } = getRecommendedHighlightCounts(pool.length);
+    const highlights = pickSuggestedHighlights(pool, maxPoolSize);
     setSuggestedHighlights(highlights);
 
-    // Pre-select top 8 highlights by default
-    const defaultIds = new Set(highlights.slice(0, 8).map(h => h.observation.id));
+    // Pre-select recommended count of highlights by default
+    const defaultIds = new Set(highlights.slice(0, recommendedCount).map(h => h.observation.id));
     setSelectedHighlightIds(defaultIds);
 
     setStep('highlights');
@@ -291,6 +293,7 @@ export function App() {
             observations={activeObservations}
             suggestedHighlights={suggestedHighlights}
             selectedIds={selectedHighlightIds}
+            recommendedCount={getRecommendedHighlightCounts(activeObservations.length).recommendedCount}
             sequenceType={sequenceType}
             onSequenceTypeChange={handleSequenceTypeChange}
             filterObscured={filterObscured}

@@ -1,6 +1,6 @@
 # MyiNatAnimated
 
-Animovaný mapový příběh z vašich pozorování na síti iNaturalist.
+Animovaný mapový příběh z vašich pozorování na iNaturalist.
 
 Aplikace promění vaše terénní nálezy, expedice nebo celoroční bilanci do plynulého kinematografického videa či animovaného GIFu s reaktivním pohybem kamery, zvukovými efekty a prezentací nejzajímavějších druhů.
 
@@ -103,18 +103,6 @@ Klikněte na tlačítko **Exportovat**. Otevře se okno s volbou parametrů:
 
 ---
 
-## Kam umístit vlastní screenshoty
-
-Chcete-li doplnit snímky obrazovky přímo do této dokumentace:
-1. Uložte snímky do složky `docs/images/`.
-2. Doporučené názvy a obsah souborů:
-   - `01_vyhledavani.png` – Úvodní obrazovka se zadávacím formulářem a tlačítkem Demo.
-   - `02_vyber_highlightu.png` – Mřížka s kartami pozorování a přepínači filtrů.
-   - `03_prehravac_a_mapa.png` – Běžící animace s mapou, vyskakujícími ikonami a časovou osou.
-   - `04_dialog_exportu.png` – Otevřený dialog s volbou poměru stran a formátu (MP4 / GIF).
-
----
-
 # ČÁST II: ARCHITEKTURA A TECHNICKÉ INFORMACE
 
 ## Technologický stack
@@ -143,18 +131,6 @@ Aplikace je rozdělena do modulárních komponent v adresáři `src/`:
   - Deterministický offline záznamník. Během exportu krokuje čas po přesných časových úsecích (nezávisle na reálné rychlosti procesoru), což zaručuje dokonale plynulý výstup bez trhání i na méně výkonných počítačích.
 - `src/services/inatApi.ts` a `src/services/requestQueue.ts`:
   - Šetrné načítání z iNaturalist API v1. Dodržuje limit maximálně 1 požadavek za 1,1&nbsp;s, využívá kurzorové stránkování `id_above` a ukládá kompletní odpovědi do IndexedDB mezipaměti.
-
----
-
-## Správa a nasazení na GitHub Pages
-
-Projekt obsahuje automatizovaný workflow `.github/workflows/deploy.yml`. 
-
-Aby GitHub Pages správně zobrazovaly zkompilovanou aplikaci (místo prázdné bílé stránky):
-1. Přejděte v repozitáři na GitHubu do záložky **Settings** (Nastavení).
-2. V levém menu klikněte na sekci **Pages**.
-3. V části **Build and deployment** přepněte nabídku **Source** na **GitHub Actions** (doporučeno), případně na **Deploy from a branch** a zvolte větev **gh-pages** s kořenovou složkou `/ (root)`.
-4. *Poznámka:* Pokud je ponecháno výchozí nastavení větve `main`, GitHub se pokouší servírovat nezkompilovaný zdrojový kód z kořene repozitáře, což v prohlížeči způsobí bílou obrazovku.
 
 ---
 

@@ -18,6 +18,7 @@ interface HighlightPickerProps {
   observations: InatObservation[];
   suggestedHighlights: HighlightItem[];
   selectedIds: Set<number>;
+  recommendedCount?: number;
   sequenceType: 'observed' | 'created';
   onSequenceTypeChange: (type: 'observed' | 'created') => void;
   filterObscured: boolean;
@@ -38,6 +39,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   observations,
   suggestedHighlights,
   selectedIds,
+  recommendedCount = 8,
   sequenceType,
   onSequenceTypeChange,
   filterObscured,
@@ -99,8 +101,14 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
-            {t.selectedCount}: {selectedIds.size}&nbsp;/&nbsp;12
+          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold flex items-center gap-1">
+            <span>{t.selectedCount}:</span>
+            <span className="text-white font-bold">{selectedIds.size}</span>
+            {recommendedCount > 0 && (
+              <span className="text-emerald-300/80 font-normal ml-0.5">
+                ({locale === 'cs' ? `doporučeno: ${recommendedCount}` : `target: ${recommendedCount}`})
+              </span>
+            )}
           </span>
           <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400">
             {locale === 'cs' ? `Z celkem: ${observations.length} pozorování` : `Pool: ${observations.length} observations`}
@@ -178,9 +186,13 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           <button
             type="button"
             onClick={() => {
-              const top12 = new Set(sortedHighlights.slice(0, 12).map(h => h.observation.id));
-              // Trigger state through callback or replace
-              top12.forEach(id => {
+              const topTarget = sortedHighlights.slice(0, Math.max(1, recommendedCount)).map(h => h.observation.id);
+              const hasAllRecommended = topTarget.every(id => selectedIds.has(id));
+              const idsToSelect = hasAllRecommended
+                ? sortedHighlights.map(h => h.observation.id)
+                : topTarget;
+
+              idsToSelect.forEach(id => {
                 if (!selectedIds.has(id)) onToggleHighlight(id);
               });
             }}
@@ -247,6 +259,34 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
                   {formatLocalizedDate(observation.observed_on, locale)}
                 </div>
+
+                {/* Dynamic sort metric badge in bottom right corner of photo */}
+                <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[11px] font-semibold flex items-center gap-1 shadow border border-slate-800">
+                  {sortMode === 'faves' && (
+                    <span className="text-amber-400 flex items-center gap-1" title={locale === 'cs' ? 'Počet oblíbení' : 'Favorites'}>
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      {observation.faves_count || 0}
+                    </span>
+                  )}
+                  {sortMode === 'comments' && (
+                    <span className="text-cyan-400 flex items-center gap-1" title={locale === 'cs' ? 'Počet komentářů' : 'Comments'}>
+                      <MessageSquare className="w-3 h-3 fill-cyan-400" />
+                      {observation.comments_count || 0}
+                    </span>
+                  )}
+                  {sortMode === 'score' && (
+                    <span className="text-emerald-400 flex items-center gap-1" title={locale === 'cs' ? 'Celkové skóre' : 'Total score'}>
+                      <Sparkles className="w-3 h-3" />
+                      {score}&nbsp;b.
+                    </span>
+                  )}
+                  {sortMode === 'date' && (
+                    <span className="text-slate-300 flex items-center gap-1" title={locale === 'cs' ? 'Datum pozorování' : 'Observation date'}>
+                      <Calendar className="w-3 h-3" />
+                      {formatLocalizedDate(observation.observed_on, locale)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Text body */}
@@ -270,22 +310,72 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 {/* Metrics bar */}
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60 mt-1">
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-0.5 text-amber-400 font-medium text-[11px]" title="Počet oblíbení">
+                    <span
+                      className={`flex items-center gap-0.5 font-medium text-[11px] transition ${
+                        sortMode === 'faves'
+                          ? 'text-amber-300 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20'
+                          : 'text-amber-400'
+                      }`}
+                      title={locale === 'cs' ? 'Počet oblíbení' : 'Favorites'}
+                    >
                       <Star className="w-3 h-3 fill-amber-400" />
                       {observation.faves_count || 0}
                     </span>
-                    <span className="flex items-center gap-0.5 text-cyan-400 font-medium text-[11px]" title="Počet komentářů">
+                    <span
+                      className={`flex items-center gap-0.5 font-medium text-[11px] transition ${
+                        sortMode === 'comments'
+                          ? 'text-cyan-300 bg-cyan-500/10 px-1 py-0.5 rounded border border-cyan-500/20'
+                          : 'text-cyan-400'
+                      }`}
+                      title={locale === 'cs' ? 'Počet komentářů' : 'Comments'}
+                    >
                       <MessageSquare className="w-3 h-3 fill-cyan-400" />
                       {observation.comments_count || 0}
                     </span>
-                    <span className="flex items-center gap-0.5 text-emerald-400 font-medium text-[11px]" title={`Počet určení: ${idCount} (${idCount > 2 ? `bonus +${(idCount - 2) * 0.5} b.` : 'základní'})`}>
+                    <span
+                      className="flex items-center gap-0.5 text-emerald-400 font-medium text-[11px]"
+                      title={`Počet určení: ${idCount} (${idCount > 2 ? `bonus +${(idCount - 2) * 0.5} b.` : 'základní'})`}
+                    >
                       <UserCheck className="w-3 h-3" />
                       {idCount}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono font-medium">
-                    {score}&nbsp;b.
-                  </span>
+
+                  {/* Pravý dolní roh karty s aktuální metrikou řazení */}
+                  <div>
+                    {sortMode === 'faves' && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[11px]">
+                        <Star className="w-3 h-3 fill-amber-400" />
+                        <span>{observation.faves_count || 0}</span>
+                        <span className="text-[10px] text-amber-400/80 font-normal">
+                          {locale === 'cs' ? 'oblíb.' : 'faves'}
+                        </span>
+                      </span>
+                    )}
+                    {sortMode === 'comments' && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-[11px]">
+                        <MessageSquare className="w-3 h-3 fill-cyan-400" />
+                        <span>{observation.comments_count || 0}</span>
+                        <span className="text-[10px] text-cyan-400/80 font-normal">
+                          {locale === 'cs' ? 'koment.' : 'comments'}
+                        </span>
+                      </span>
+                    )}
+                    {sortMode === 'score' && (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[11px]">
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span>{score}&nbsp;b.</span>
+                        <span className="text-[10px] text-emerald-400/80 font-normal">
+                          {locale === 'cs' ? 'skóre' : 'score'}
+                        </span>
+                      </span>
+                    )}
+                    {sortMode === 'date' && (
+                      <span className="text-[10px] text-slate-400 font-mono font-medium">
+                        {score}&nbsp;b.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
