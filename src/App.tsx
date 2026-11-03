@@ -68,7 +68,7 @@ const isolatedCount = useMemo(() => {
 }, [observations, filterObscured, sequenceType]);
 
 const updateHighlightsForPool = (pool: InatObservation[]) => {
-  const highlights = pickSuggestedHighlights(pool, 8);
+  const highlights = pickSuggestedHighlights(pool, 12);
   setSuggestedHighlights(highlights);
 
   const activeIds = new Set(pool.map(o => o.id));
@@ -78,7 +78,7 @@ const updateHighlightsForPool = (pool: InatObservation[]) => {
       if (activeIds.has(id)) next.add(id);
     }
     if (next.size === 0) {
-      highlights.slice(0, 5).forEach(h => next.add(h.observation.id));
+      highlights.slice(0, 8).forEach(h => next.add(h.observation.id));
     }
     return next;
   });
@@ -90,11 +90,11 @@ const handleDataLoaded = (loadedObs: InatObservation[], user: string) => {
   setObservations(loadedObs);
 
   const pool = getFilteredPool(loadedObs, filterObscured, filterIsolated, sequenceType);
-  const highlights = pickSuggestedHighlights(pool, 8);
+  const highlights = pickSuggestedHighlights(pool, 12);
   setSuggestedHighlights(highlights);
 
-  // Pre-select top 5 highlights by default
-  const defaultIds = new Set(highlights.slice(0, 5).map(h => h.observation.id));
+  // Pre-select top 8 highlights by default
+  const defaultIds = new Set(highlights.slice(0, 8).map(h => h.observation.id));
   setSelectedHighlightIds(defaultIds);
 
   setStep('highlights');
@@ -232,7 +232,7 @@ return (
     </header>
 
     {/* Main Container */}
-    <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+    <main className={`flex-1 max-w-6xl w-full mx-auto flex flex-col justify-center ${step === 'highlights' ? 'p-2 sm:p-3 overflow-hidden' : 'p-4 sm:p-6'}`}>
       {step === 'search' && (
         <SearchForm
           onDataLoaded={handleDataLoaded}

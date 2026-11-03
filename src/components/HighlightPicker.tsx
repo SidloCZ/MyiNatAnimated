@@ -1,5 +1,15 @@
-import React from 'react';
-import { Star, MessageSquare, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  Star,
+  MessageSquare,
+  UserCheck,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+  Calendar,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { InatObservation, HighlightItem } from '../types/inat';
 import { getObservationPhotoUrl } from '../services/inatApi';
 
@@ -20,6 +30,8 @@ interface HighlightPickerProps {
   onBack: () => void;
 }
 
+export type HighlightSortMode = 'faves' | 'score' | 'comments' | 'date';
+
 export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   observations,
   suggestedHighlights,
@@ -36,43 +48,144 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   onProceed,
   onBack,
 }) => {
+  // Výchozí řazení: napřed podle oblíbení, poté podle skóre, poté podle komentářů
+  const [sortMode, setSortMode] = useState<HighlightSortMode>('faves');
+
+  const sortedHighlights = useMemo(() => {
+    const list = [...suggestedHighlights];
+    return list.sort((a, b) => {
+      if (sortMode === 'faves') {
+        const diffFaves = (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+        if (diffFaves !== 0) return diffFaves;
+        const diffScore = b.score - a.score;
+        if (diffScore !== 0) return diffScore;
+        return (b.observation.comments_count || 0) - (a.observation.comments_count || 0);
+      }
+      if (sortMode === 'score') {
+        const diffScore = b.score - a.score;
+        if (diffScore !== 0) return diffScore;
+        const diffFaves = (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+        if (diffFaves !== 0) return diffFaves;
+        return (b.observation.comments_count || 0) - (a.observation.comments_count || 0);
+      }
+      if (sortMode === 'comments') {
+        const diffComments = (b.observation.comments_count || 0) - (a.observation.comments_count || 0);
+        if (diffComments !== 0) return diffComments;
+        const diffFaves = (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+        if (diffFaves !== 0) return diffFaves;
+        return b.score - a.score;
+      }
+      // 'date'
+      const timeA = new Date(a.observation.observed_on || a.observation.created_at).getTime();
+      const timeB = new Date(b.observation.observed_on || b.observation.created_at).getTime();
+      return timeA - timeB;
+    });
+  }, [suggestedHighlights, sortMode]);
+
   return (
-    <div className="w-full max-w-4xl mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-800">
+    <div className="w-full max-w-6xl h-[calc(100dvh-6.5rem)] max-h-[860px] flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md overflow-hidden">
+      {/* 1. Header (Pevná horní lišta) */}
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Výběr highlightů
+          <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+            Výběr highlightů ({suggestedHighlights.length})
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Vyberte pozorování, u&nbsp;kterých se kamera zpomalí a&nbsp;zobrazí se detailní vizitka.
+          <p className="text-xs text-slate-400 mt-0.5">
+            Zvolte pozorování, u&nbsp;kterých se kamera zpomalí a&nbsp;zobrazí se detailní vizitka.
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <span className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
-            Vybráno: {selectedIds.size}
+          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+            Aktivních: {selectedIds.size}
           </span>
-          <span className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400">
-            Celkem: {observations.length}&nbsp;pozorování
+          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400">
+            Z&nbsp;celkem: {observations.length}&nbsp;pozorování
           </span>
           {filterObscured && obscuredCount > 0 && (
-            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
               {obscuredCount}&nbsp;zkreslených skryto
             </span>
           )}
           {filterIsolated && isolatedCount > 0 && (
-            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="text-xs px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
               {isolatedCount}&nbsp;osamocených vynecháno
             </span>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8 max-h-[58vh] overflow-y-auto pr-1">
-        {suggestedHighlights.map(({ observation, score }) => {
+      {/* 2. Sort Controls Bar (Přepínač řazení) */}
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 mb-3 px-0.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+            Řadit seznam dle:
+          </span>
+          <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <button
+              type="button"
+              onClick={() => setSortMode('faves')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
+                sortMode === 'faves'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Star className="w-3 h-3 fill-current" />
+              Oblíbení
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('score')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
+                sortMode === 'score'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              Skóre
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('comments')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
+                sortMode === 'comments'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-3 h-3 fill-current" />
+              Komentáře
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('date')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition ${
+                sortMode === 'date'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              Datum
+            </button>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-slate-500 hidden sm:block">
+          Kliknutím na kartu zapnete nebo vypnete její zobrazení v&nbsp;animaci
+        </div>
+      </div>
+
+      {/* 3. Cards Grid (Jediná scrollovatelná oblast, plně přizpůsobená výšce) */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {sortedHighlights.map(({ observation, score }) => {
           const isSelected = selectedIds.has(observation.id);
           const photoUrl = getObservationPhotoUrl(observation, 'medium');
           const commonName = observation.taxon?.preferred_common_name || observation.taxon?.name || 'Pozorování';
           const latinName = observation.taxon?.name;
+          const idCount = observation.identifications_count || 0;
 
           return (
             <div
@@ -81,11 +194,11 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
               className={`group relative flex flex-col rounded-xl overflow-hidden border cursor-pointer transition select-none ${
                 isSelected
                   ? 'border-emerald-500/80 bg-slate-800/80 shadow-lg shadow-emerald-500/10'
-                  : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 opacity-75 hover:opacity-100'
+                  : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 opacity-70 hover:opacity-100'
               }`}
             >
-              {/* Image banner */}
-              <div className="relative w-full h-36 bg-slate-900 overflow-hidden">
+              {/* Photo banner */}
+              <div className="relative w-full h-28 sm:h-32 bg-slate-900 overflow-hidden shrink-0">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -94,59 +207,64 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-600">
-                    Bez fotografie
+                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-600 bg-slate-950">
+                    Bez fotografie (zvuk / záznam)
                   </div>
                 )}
 
                 {/* Selection toggle badge */}
                 <div
-                  className={`absolute top-2.5 right-2.5 w-6 h-6 rounded-md flex items-center justify-center transition ${
+                  className={`absolute top-2 right-2 w-5 h-5 rounded-md flex items-center justify-center transition ${
                     isSelected
-                      ? 'bg-emerald-500 text-slate-950'
+                      ? 'bg-emerald-500 text-slate-950 shadow'
                       : 'bg-slate-900/80 text-transparent border border-white/20'
                   }`}
                 >
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <Check className="w-3 h-3 stroke-[3]" />
                 </div>
 
                 {/* Date badge */}
-                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
+                <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
                   {observation.observed_on}
                 </div>
               </div>
 
               {/* Text body */}
-              <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
+              <div className="p-3 flex flex-col flex-1 justify-between gap-1.5">
                 <div>
-                  <h3 className="text-sm font-semibold text-white line-clamp-1">
+                  <h3 className="text-xs sm:text-sm font-semibold text-white line-clamp-1" title={commonName}>
                     {commonName}
                   </h3>
                   {latinName && (
-                    <p className="text-xs italic text-slate-400 line-clamp-1">
+                    <p className="text-[11px] italic text-slate-400 line-clamp-1">
                       {latinName}
                     </p>
                   )}
                   {observation.place_guess && (
-                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-1">
+                    <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5" title={observation.place_guess}>
                       {observation.place_guess}
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex items-center gap-1 text-amber-400 font-medium text-[11px]">
+                {/* Metrics bar */}
+                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-0.5 text-amber-400 font-medium text-[11px]" title="Počet oblíbení">
                       <Star className="w-3 h-3 fill-amber-400" />
                       {observation.faves_count || 0}
                     </span>
-                    <span className="flex items-center gap-1 text-cyan-400 font-medium text-[11px]">
+                    <span className="flex items-center gap-0.5 text-cyan-400 font-medium text-[11px]" title="Počet komentářů">
                       <MessageSquare className="w-3 h-3 fill-cyan-400" />
                       {observation.comments_count || 0}
                     </span>
+                    <span className="flex items-center gap-0.5 text-emerald-400 font-medium text-[11px]" title={`Počet určení: ${idCount} (${idCount > 2 ? `bonus +${(idCount - 2) * 0.5} b.` : 'základní'})`}>
+                      <UserCheck className="w-3 h-3" />
+                      {idCount}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    Skóre: {score}
+                  <span className="text-[10px] text-slate-400 font-mono font-medium">
+                    {score}&nbsp;b.
                   </span>
                 </div>
               </div>
@@ -155,16 +273,17 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
         })}
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800">
-        <div className="flex flex-wrap items-center gap-4 self-start sm:self-auto">
+      {/* 4. Footer Controls (Pevná spodní lišta s tlačítky - vždy viditelná bez rolování) */}
+      <div className="shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 mt-3 border-t border-slate-800">
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           {/* Pořadí animace */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-400 font-medium">Pořadí:</span>
             <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               <button
                 type="button"
                 onClick={() => onSequenceTypeChange('observed')}
-                className={`px-3 py-1.5 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition ${
                   sequenceType === 'observed'
                     ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
                     : 'text-slate-400 hover:text-white'
@@ -175,7 +294,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
               <button
                 type="button"
                 onClick={() => onSequenceTypeChange('created')}
-                className={`px-3 py-1.5 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition ${
                   sequenceType === 'created'
                     ? 'bg-emerald-500 text-slate-950 font-semibold shadow'
                     : 'text-slate-400 hover:text-white'
@@ -187,33 +306,33 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           </div>
 
           {/* Filtr zkreslených souřadnic */}
-          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-1">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-0.5">
             <input
               type="checkbox"
               checked={filterObscured}
               onChange={(e) => onFilterObscuredChange(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+              className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
             />
-            <span>Skrýt zkreslené / soukromé body</span>
+            <span>Skrýt zkreslené</span>
           </label>
 
           {/* Filtr osamocených vzdálených bodů */}
-          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-1">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-300 hover:text-white transition py-0.5">
             <input
               type="checkbox"
               checked={filterIsolated}
               onChange={(e) => onFilterIsolatedChange(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
+              className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer accent-emerald-500"
             />
-            <span>Vynechat osamocené body (&gt;&nbsp;150&nbsp;km)</span>
+            <span>Vynechat osamocené (&gt;&nbsp;150&nbsp;km)</span>
           </label>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-white transition"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
           >
             <ArrowLeft className="w-4 h-4" />
             Zpět
@@ -221,7 +340,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           <button
             type="button"
             onClick={onProceed}
-            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer"
           >
             Pokračovat
             <ArrowRight className="w-4 h-4" />
@@ -231,4 +350,3 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
     </div>
   );
 };
-
