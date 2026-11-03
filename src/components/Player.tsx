@@ -17,7 +17,7 @@ import {
 import { TimelineData } from '../types/timeline';
 import { PreloadedSprites } from '../engine/spriteAtlas';
 import { interpolateCamera } from '../engine/cameraDirector';
-import { warmupMapTiles, waitForMapIdle } from '../engine/tilePreloader';
+import { warmupMapTiles, waitForMapIdle, waitForStyleLoad } from '../engine/tilePreloader';
 import { renderDopamineFrame } from '../engine/dopamineCanvas';
 import { getPlaybackStatsAtTime, formatCzechDate } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
@@ -34,41 +34,30 @@ interface PlayerProps {
   onBack: () => void;
 }
 
-export type MapStyleKey = 'dark' | 'liberty' | 'osm';
+export type MapStyleKey = 'dark' | 'liberty' | 'positron' | 'bright' | 'osm';
 
-      export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | maplibregl.StyleSpecification }> = {
-        dark: {
-          label: 'Tmavá (OpenFreeMap)',
-          style: 'https://tiles.openfreemap.org/styles/dark',
-        },
-        liberty: {
-          label: 'Barevná (OpenFreeMap)',
-          style: 'https://tiles.openfreemap.org/styles/liberty',
-        },
-        osm: {
-          label: 'OpenStreetMap',
-          style: {
-            version: 8,
-            sources: {
-              'osm-raster': {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-                attribution: '© OpenStreetMap contributors',
-              },
-            },
-            layers: [
-              {
-                id: 'osm-raster-layer',
-                type: 'raster',
-                source: 'osm-raster',
-                minzoom: 0,
-                maxzoom: 19,
-              },
-            ],
-          },
-        },
-      };
+export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | maplibregl.StyleSpecification }> = {
+  dark: {
+    label: 'Tmavá (OpenFreeMap)',
+    style: 'https://tiles.openfreemap.org/styles/dark',
+  },
+  liberty: {
+    label: 'Barevná (OpenFreeMap)',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+  },
+  positron: {
+    label: 'Světlá (OpenFreeMap)',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+  },
+  bright: {
+    label: 'Jasná (OpenFreeMap)',
+    style: 'https://tiles.openfreemap.org/styles/bright',
+  },
+  osm: {
+    label: 'OpenStreetMap (OpenFreeMap)',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+  },
+};
 
 export const Player: React.FC<PlayerProps> = ({
   timeline,
@@ -122,7 +111,7 @@ export const Player: React.FC<PlayerProps> = ({
     cancelBufferingRef.current = true;
     setIsBuffering(false);
     setIsMapReady(true);
-    setIsPlaying(true);
+    setIsPlaying(false);
     const map = mapRef.current;
     if (map) {
       const initialKeyframe = timeline.cameraKeyframes[0];
@@ -137,29 +126,35 @@ export const Player: React.FC<PlayerProps> = ({
     }
   };
 
-  const handleStyleChange = (key: MapStyleKey) => {
+  const styleChangeSeqRef = useRef(0);
+
+  const handleStyleChange = async (key: MapStyleKey) => {
     setMapStyleKey(key);
     const map = mapRef.current;
-    if (map) {
-      setIsPlaying(false);
-      setIsBuffering(true);
-      setBufferProgress(0);
-      cancelBufferingRef.current = false;
-      map.setStyle(MAP_STYLES[key].style);
+    if (!map) return;
 
-      map.once('style.load', async () => {
-        await warmupMapTiles(map, timeline.cameraKeyframes, {
-          onProgress: (p) => setBufferProgress(Math.round(p * 100)),
-          shouldCancel: () => cancelBufferingRef.current,
-          timeoutPerStepMs: 1200,
-        });
-        if (!cancelBufferingRef.current) {
-          setIsBuffering(false);
-          setIsMapReady(true);
-          setIsPlaying(true);
-        }
-      });
-    }
+    const seq = ++styleChangeSeqRef.current;
+
+    // Pause playback on style switch
+    setIsPlaying(false);
+
+    // Cancel any running warmup
+    cancelBufferingRef.current = true;
+
+    // Apply the selected style
+    const selected = MAP_STYLES[key] || MAP_STYLES.dark;
+    map.setStyle(selected.style);
+
+    // Wait for the new style to load and settle
+    await waitForStyleLoad(map, 3500);
+    if (seq !== styleChangeSeqRef.current) return;
+
+    await waitForMapIdle(map, 800);
+    if (seq !== styleChangeSeqRef.current) return;
+
+    setIsMapReady(true);
+    setIsBuffering(false);
+    setIsPlaying(false);
   };
 
   // Initialize MapLibre
@@ -198,13 +193,14 @@ export const Player: React.FC<PlayerProps> = ({
       await warmupMapTiles(map, timeline.cameraKeyframes, {
         onProgress: (p) => setBufferProgress(Math.round(p * 100)),
         shouldCancel: () => cancelBufferingRef.current,
-        timeoutPerStepMs: 1200,
+        samples: 10,
+        timeoutPerStepMs: 600,
       });
 
       if (!cancelBufferingRef.current) {
         setIsBuffering(false);
         setIsMapReady(true);
-        setIsPlaying(true);
+        setIsPlaying(false);
       }
     });
 
@@ -360,24 +356,19 @@ export const Player: React.FC<PlayerProps> = ({
       bearing: cam.bearing,
     });
 
-    // Wait for map tiles to settle completely before grabbing frame
-    if (!map.areTilesLoaded()) {
-      await waitForMapIdle(map, 800);
+    // Ensure MapLibre updates sources and paints WebGL buffer synchronously
+    const anyMap = map as unknown as { _render?: (now: number) => void };
+    if (typeof anyMap._render === 'function') {
+      anyMap._render(performance.now());
     }
 
-    // Force MapLibre to paint WebGL buffer for this exact frame
-    map.triggerRepaint();
-    await new Promise<void>((resolve) => {
-      let resolved = false;
-      const onRender = () => {
-        if (!resolved) {
-          resolved = true;
-          resolve();
-        }
-      };
-      map.once('render', onRender);
-      setTimeout(onRender, 60);
-    });
+    // Wait for map tiles to settle completely before grabbing frame
+    if (!map.areTilesLoaded()) {
+      await waitForMapIdle(map, 600);
+      if (typeof anyMap._render === 'function') {
+        anyMap._render(performance.now());
+      }
+    }
 
     const targetCtx = targetCanvas.getContext('2d');
     if (!targetCtx) return;
@@ -409,8 +400,19 @@ export const Player: React.FC<PlayerProps> = ({
     });
   };
 
+  const handleResetExport = () => {
+    if (downloadUrl) {
+      URL.revokeObjectURL(downloadUrl);
+    }
+    setDownloadUrl(null);
+    setExportProgress(null);
+  };
+
   const handleStartExport = async (format: ExportFormat, aspectRatio: VideoAspectRatio) => {
     setIsPlaying(false);
+    if (downloadUrl) {
+      URL.revokeObjectURL(downloadUrl);
+    }
     setDownloadUrl(null);
 
     let width = 1920;
@@ -603,7 +605,8 @@ export const Player: React.FC<PlayerProps> = ({
               >
                 <option value="dark">Tmavá (OpenFreeMap)</option>
                 <option value="liberty">Barevná (OpenFreeMap)</option>
-                <option value="osm">OpenStreetMap</option>
+                <option value="positron">Světlá (OpenFreeMap)</option>
+                <option value="bright">Jasná (OpenFreeMap)</option>
               </select>
             </div>
 
@@ -732,8 +735,12 @@ export const Player: React.FC<PlayerProps> = ({
       {/* Export modal dialog */}
       <ExportDialog
         isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
+        onClose={() => {
+          setIsExportOpen(false);
+          handleResetExport();
+        }}
         onStartExport={handleStartExport}
+        onResetExport={handleResetExport}
         exportProgress={exportProgress}
         downloadUrl={downloadUrl}
         downloadFilename={downloadFilename}

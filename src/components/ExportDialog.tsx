@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle } from 'lucide-react';
+import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle, RotateCcw } from 'lucide-react';
 import { VideoAspectRatio, ExportProgress, ExportFormat } from '../types/export';
 
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onStartExport: (format: ExportFormat, aspectRatio: VideoAspectRatio) => Promise<void>;
+  onResetExport: () => void;
   exportProgress: ExportProgress | null;
   downloadUrl: string | null;
   downloadFilename: string;
@@ -15,6 +16,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   isOpen,
   onClose,
   onStartExport,
+  onResetExport,
   exportProgress,
   downloadUrl,
   downloadFilename,
@@ -23,6 +25,20 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>('16:9');
   const isExporting = exportProgress !== null && exportProgress.phase !== 'completed' && exportProgress.phase !== 'error';
   const hasError = exportProgress !== null && exportProgress.phase === 'error';
+
+  const handleSelectFormat = (newFormat: ExportFormat) => {
+    setFormat(newFormat);
+    if (downloadUrl) {
+      onResetExport();
+    }
+  };
+
+  const handleSelectAspectRatio = (newRatio: VideoAspectRatio) => {
+    setAspectRatio(newRatio);
+    if (downloadUrl) {
+      onResetExport();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -54,7 +70,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setFormat('mp4')}
+              onClick={() => handleSelectFormat('mp4')}
               className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
                 format === 'mp4'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
@@ -71,7 +87,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setFormat('apng')}
+              onClick={() => handleSelectFormat('apng')}
               className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
                 format === 'apng'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
@@ -88,7 +104,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setFormat('gif')}
+              onClick={() => handleSelectFormat('gif')}
               className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
                 format === 'gif'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
@@ -113,7 +129,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setAspectRatio('16:9')}
+              onClick={() => handleSelectAspectRatio('16:9')}
               className={`p-2.5 rounded-xl border text-center transition ${
                 aspectRatio === '16:9'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
@@ -127,7 +143,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setAspectRatio('9:16')}
+              onClick={() => handleSelectAspectRatio('9:16')}
               className={`p-2.5 rounded-xl border text-center transition ${
                 aspectRatio === '9:16'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
@@ -141,7 +157,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button
               type="button"
               disabled={isExporting}
-              onClick={() => setAspectRatio('1:1')}
+              onClick={() => handleSelectAspectRatio('1:1')}
               className={`p-2.5 rounded-xl border text-center transition ${
                 aspectRatio === '1:1'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
@@ -186,16 +202,26 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           </div>
         )}
 
-        {/* Completed download action */}
+        {/* Completed download action or start export */}
         {downloadUrl ? (
-          <a
-            href={downloadUrl}
-            download={downloadFilename}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
-          >
-            <Check className="w-4 h-4" />
-            Stáhnout ({downloadFilename})
-          </a>
+          <div className="space-y-2.5">
+            <a
+              href={downloadUrl}
+              download={downloadFilename}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
+            >
+              <Check className="w-4 h-4" />
+              Stáhnout ({downloadFilename})
+            </a>
+            <button
+              type="button"
+              onClick={onResetExport}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700/80 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Vygenerovat další export
+            </button>
+          </div>
         ) : (
           <button
             type="button"

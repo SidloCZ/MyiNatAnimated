@@ -13,7 +13,7 @@ export interface WarmupOptions {
  * Reliably waits for MapLibre to settle and render all tiles in the current viewport.
  * Does not prematurely return on stale areTilesLoaded checks.
  */
-export function waitForMapIdle(map: maplibregl.Map, timeoutMs = 1500): Promise<void> {
+export function waitForMapIdle(map: maplibregl.Map, timeoutMs = 1200): Promise<void> {
   return new Promise((resolve) => {
     let done = false;
 
@@ -34,6 +34,45 @@ export function waitForMapIdle(map: maplibregl.Map, timeoutMs = 1500): Promise<v
 }
 
 /**
+ * Reliably waits for a MapLibre style to fully load, with fallbacks for in-memory specs and timeouts.
+ */
+export function waitForStyleLoad(map: maplibregl.Map, timeoutMs = 3500): Promise<void> {
+  if (map.isStyleLoaded()) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const cleanup = () => {
+      if (!resolved) {
+        resolved = true;
+        map.off('style.load', onStyleLoad);
+        map.off('styledata', onStyleData);
+        map.off('error', onError);
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+
+    const onStyleLoad = () => cleanup();
+    const onStyleData = () => {
+      if (map.isStyleLoaded()) {
+        cleanup();
+      }
+    };
+    const onError = () => {
+      cleanup();
+    };
+
+    const timer = setTimeout(cleanup, timeoutMs);
+
+    map.once('style.load', onStyleLoad);
+    map.on('styledata', onStyleData);
+    map.once('error', onError);
+  });
+}
+
+/**
  * Pre-warms map tiles directly on an active MapLibre instance along the camera trajectory.
  * Ensures vector/raster tiles are downloaded, decoded in workers, and retained in GPU/WebGL memory
  * before the animation begins.
@@ -49,7 +88,7 @@ export async function warmupMapTiles(
   }
 
   const totalTime = keyframes[keyframes.length - 1].t;
-  const sampleCount = options?.samples || Math.min(24, Math.max(10, Math.round(totalTime / 1.5)));
+  const sampleCount = options?.samples || Math.min(12, Math.max(6, Math.round(totalTime / 2.5)));
   const sampledKeyframes: CameraKeyframe[] = [];
 
   for (let i = 0; i <= sampleCount; i++) {
@@ -58,7 +97,7 @@ export async function warmupMapTiles(
   }
 
   const total = sampledKeyframes.length;
-  const timeoutMs = options?.timeoutPerStepMs ?? 1500;
+  const timeoutMs = options?.timeoutPerStepMs ?? 700;
 
   for (let i = 0; i < total; i++) {
     if (options?.shouldCancel?.()) {

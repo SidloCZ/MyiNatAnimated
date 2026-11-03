@@ -14,9 +14,11 @@ export interface DopamineRenderOptions {
 }
 
 export function renderDopamineFrame(options: DopamineRenderOptions) {
-  const { ctx, width, height, timeline, t, project, sprites } = options;
+  const { ctx, width, height, timeline, t, project, sprites, isExport } = options;
 
-  ctx.clearRect(0, 0, width, height);
+  if (!isExport) {
+    ctx.clearRect(0, 0, width, height);
+  }
 
   const pastEvents: ObsEvent[] = [];
   let activeHighlight: ObsEvent | null = null;
