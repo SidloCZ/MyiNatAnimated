@@ -7,6 +7,86 @@ export interface CameraDirectorConfig {
   arcFlyDistanceKm?: number; // Threshold distance for pulling back during long transitions
 }
 
+export interface WalkClusterInfo {
+  isWalkCluster: boolean;
+  count: number;
+  spanKm: number;
+  center: [number, number];
+  recommendedZoom: number;
+}
+
+// Detekuje sekvenci po sobě jdoucích pozorování v okruhu do maxSpanKm (výchozí 5 km)
+export function detectWalkCluster(
+  events: ObsEvent[],
+  startIndex = 0,
+  maxSpanKm = 5.0,
+  minCount = 8
+): WalkClusterInfo {
+  if (events.length === 0 || startIndex >= events.length) {
+    return {
+      isWalkCluster: false,
+      count: 0,
+      spanKm: 0,
+      center: [15.47, 49.81],
+      recommendedZoom: 10.5,
+    };
+  }
+
+  const firstCoord = events[startIndex].coordinates;
+  let minLng = firstCoord[0];
+  let maxLng = firstCoord[0];
+  let minLat = firstCoord[1];
+  let maxLat = firstCoord[1];
+
+  let clusterCount = 1;
+
+  for (let i = startIndex + 1; i < events.length; i++) {
+    const coord = events[i].coordinates;
+    const testMinLng = Math.min(minLng, coord[0]);
+    const testMaxLng = Math.max(maxLng, coord[0]);
+    const testMinLat = Math.min(minLat, coord[1]);
+    const testMaxLat = Math.max(maxLat, coord[1]);
+
+    const diagonalKm = calculateDistanceKm([testMinLng, testMinLat], [testMaxLng, testMaxLat]);
+
+    if (diagonalKm <= maxSpanKm) {
+      minLng = testMinLng;
+      maxLng = testMaxLng;
+      minLat = testMinLat;
+      maxLat = testMaxLat;
+      clusterCount++;
+    } else {
+      break;
+    }
+  }
+
+  const isWalkCluster = clusterCount >= minCount;
+  const spanKm = calculateDistanceKm([minLng, minLat], [maxLng, maxLat]);
+  const center: [number, number] = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+
+  // Pro detailní zobrazení pěší vycházky (do 2–5 km) volíme detailní přiblížení
+  let recommendedZoom = 10.5;
+  if (isWalkCluster) {
+    if (spanKm <= 1.5) {
+      recommendedZoom = 14.8;
+    } else if (spanKm <= 3.0) {
+      recommendedZoom = 14.2;
+    } else if (spanKm <= 5.0) {
+      recommendedZoom = 13.5;
+    } else {
+      recommendedZoom = 12.8;
+    }
+  }
+
+  return {
+    isWalkCluster,
+    count: clusterCount,
+    spanKm,
+    center,
+    recommendedZoom,
+  };
+}
+
 export function calculateFlightDuration(distKm: number): number {
   if (distKm < 15) return 0;
   if (distKm < 50) return 2.8;
@@ -40,8 +120,8 @@ export function generateCameraKeyframes(
 ): CameraKeyframe[] {
   const {
     minZoom = 2.5,
-    maxZoom = 13.5,
-    zoomInRate = 0.12,
+    maxZoom = 15.5,
+    zoomInRate = 0.08,
     arcFlyDistanceKm = 15,
   } = config;
 
@@ -54,19 +134,26 @@ export function generateCameraKeyframes(
 
   const keyframes: CameraKeyframe[] = [];
 
-  // Initial keyframe at t=0
-  const firstCoord = events[0].coordinates;
-  const initialZoom = Math.max(minZoom, 10.5);
+  // Zjištění, zda na začátku existuje sekvence po sobě jdoucích bodů z vycházky (více než 8 bodů v okruhu do 2–5 km)
+  const initialCluster = detectWalkCluster(events, 0, 5.0, 8);
+
+  const initialCenter: [number, number] = initialCluster.isWalkCluster
+    ? initialCluster.center
+    : [events[0].coordinates[0], events[0].coordinates[1]];
+
+  const initialZoom = initialCluster.isWalkCluster
+    ? Math.max(minZoom, Math.min(maxZoom, initialCluster.recommendedZoom))
+    : Math.max(minZoom, 10.5);
 
   keyframes.push({
     t: 0,
-    center: [firstCoord[0], firstCoord[1]],
+    center: [initialCenter[0], initialCenter[1]],
     zoom: initialZoom,
     pitch: 20,
     bearing: 0,
   });
 
-  let currentCenter: [number, number] = [firstCoord[0], firstCoord[1]];
+  let currentCenter: [number, number] = [initialCenter[0], initialCenter[1]];
   let currentZoom = initialZoom;
   let lastKeyframeTime = 0;
 
@@ -89,7 +176,10 @@ export function generateCameraKeyframes(
       const startCenter: [number, number] = [currentCenter[0], currentCenter[1]];
       const startZoom = currentZoom;
       const targetCenter: [number, number] = [ev.coordinates[0], ev.coordinates[1]];
-      const targetZoom = Math.min(maxZoom, 11.5);
+      const arrivalCluster = detectWalkCluster(events, i, 5.0, 5);
+      const targetZoom = arrivalCluster.isWalkCluster
+        ? Math.max(minZoom, Math.min(maxZoom, arrivalCluster.recommendedZoom))
+        : Math.min(maxZoom, 11.5);
 
       // Google Earth style cruise altitude:
       // Sub-regional (15-50 km): zoom ~8-9.5

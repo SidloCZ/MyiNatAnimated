@@ -191,7 +191,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           <a
             href={downloadUrl}
             download={downloadFilename}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition"
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition"
           >
             <Check className="w-4 h-4" />
             Stáhnout ({downloadFilename})
@@ -201,7 +201,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             type="button"
             disabled={isExporting}
             onClick={() => onStartExport(format, aspectRatio)}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
           >
             <Download className="w-4 h-4" />
             {isExporting ? 'Probíhá export…' : 'Spustit export'}

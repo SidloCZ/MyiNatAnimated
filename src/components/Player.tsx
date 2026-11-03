@@ -584,7 +584,7 @@ export const Player: React.FC<PlayerProps> = ({
 
           {/* Center Date Indicator */}
           {currentStats.dateStr && (
-            <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 shadow-lg shadow-emerald-500/10 backdrop-blur-md">
+            <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md">
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs sm:text-sm font-bold text-white tracking-wide font-mono">
                 {formatCzechDate(currentStats.dateStr)}
@@ -629,7 +629,7 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={() => setIsExportOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-md transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Exportovat</span>
@@ -667,7 +667,7 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={handleTogglePlay}
-              className="w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center transition shadow-md shadow-emerald-500/20 cursor-pointer"
+              className="w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center transition shadow-md cursor-pointer"
               title={isPlaying ? 'Pozastavit (Mezerník)' : 'Přehrát (Mezerník)'}
             >
               {isPlaying ? (

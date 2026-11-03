@@ -58,7 +58,7 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
     ctx.restore();
   }
 
-  // 2. Draw static dots & expanding shockwaves
+  // 2. Draw clean observation markers (without neon glow or shockwaves)
   for (let i = 0; i < pastEvents.length; i++) {
     const ev = pastEvents[i];
     const pt = project(ev.coordinates);
@@ -70,43 +70,21 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
 
     const age = t - ev.t;
 
-    // Expanding shockwave ring (first 0.8s)
-    if (age >= 0 && age < 0.8) {
-      const progress = age / 0.8;
-      const ringRadius = 4 + progress * 28;
-      const ringOpacity = (1 - progress) * 0.85;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, ringRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = ev.color;
-      ctx.globalAlpha = ringOpacity;
-      ctx.lineWidth = 2.0;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Dot on map
+    // Dot on map - clean, crisp cartographic marker
     ctx.save();
-    const isNew = age < 0.3;
-    const baseRadius = ev.isHighlight ? 6.5 : 4.0;
-    const scale = isNew ? 1.0 + (0.3 - age) * 2.5 : 1.0;
-    const radius = baseRadius * scale;
-
-    // Outer glow
-    ctx.shadowColor = ev.color;
-    ctx.shadowBlur = ev.isHighlight ? 14 : 8;
+    const isNew = age < 0.25;
+    const baseRadius = ev.isHighlight ? 5.5 : 4.0;
+    const radius = isNew ? baseRadius * 1.25 : baseRadius;
 
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = ev.color;
     ctx.fill();
 
-    // White core center for high dopamine shine
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, Math.max(1, radius * 0.4), 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
+    // Crisp white outline
+    ctx.lineWidth = ev.isHighlight ? 2.0 : 1.2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
 
     ctx.restore();
 
@@ -123,8 +101,6 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
       if (taxonCanvas) {
         ctx.save();
         ctx.globalAlpha = Math.max(0, iconOpacity);
-        ctx.shadowColor = ev.color;
-        ctx.shadowBlur = 6;
         ctx.drawImage(taxonCanvas, iconX - iconSize / 2, iconY - iconSize / 2, iconSize, iconSize);
         ctx.restore();
       }
@@ -140,8 +116,6 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, starOpacity);
-      ctx.shadowColor = '#ffb300';
-      ctx.shadowBlur = 8;
       ctx.drawImage(sprites.star, starX - starSize / 2, starY - starSize / 2, starSize, starSize);
       ctx.restore();
     }
@@ -156,8 +130,6 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, bubbleOpacity);
-      ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 8;
       ctx.drawImage(sprites.comment, bubbleX - bubbleSize / 2, bubbleY - bubbleSize / 2, bubbleSize, bubbleSize);
       ctx.restore();
     }
@@ -210,7 +182,7 @@ function drawExportHud(
   ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillText('Pozorování:', padX + 16, padY + 46);
 
-  ctx.fillStyle = '#34d399';
+  ctx.fillStyle = '#74ac00';
   ctx.font = 'bold 12px monospace';
   const obsText = `${obsCount} / ${totalObs}`;
   ctx.fillText(obsText, padX + 90, padY + 46);

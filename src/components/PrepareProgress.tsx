@@ -25,7 +25,7 @@ export const PrepareProgress: React.FC<PrepareProgressProps> = ({
 
       <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
         <div
-          className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-sm shadow-emerald-500/50"
+          className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-sm"
           style={{ width: `${Math.max(5, Math.min(100, progressPercent))}%` }}
         />
       </div>
