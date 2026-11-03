@@ -111,6 +111,7 @@ export async function warmupMapTiles(
       pitch: kf.pitch,
       bearing: kf.bearing,
     });
+    map.triggerRepaint();
 
     await waitForMapIdle(map, timeoutMs);
 
@@ -127,6 +128,7 @@ export async function warmupMapTiles(
     pitch: initial.pitch,
     bearing: initial.bearing,
   });
+  map.triggerRepaint();
 
   await waitForMapIdle(map, 800);
 }
