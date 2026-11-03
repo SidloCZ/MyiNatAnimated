@@ -277,7 +277,7 @@ export function App() {
       </header>
 
       {/* Main Container */}
-      <main className={`flex-1 max-w-6xl w-full mx-auto flex flex-col justify-center ${step === 'highlights' ? 'p-2 sm:p-3 overflow-hidden' : 'p-4 sm:p-6'}`}>
+      <main className={`flex-1 max-w-6xl w-full mx-auto flex flex-col justify-center ${step === 'highlights' ? 'p-1.5 sm:p-3' : 'p-4 sm:p-6'}`}>
         {step === 'search' && (
           <SearchForm
             locale={language}
@@ -326,10 +326,24 @@ export function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-500">
-        {t.footerText}
-      </footer>
+      {/* Footer – zobrazuje se pouze na úvodní vyhledávací obrazovce */}
+      {step === 'search' && (
+        <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-500 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+          <span>{t.footerText}</span>
+          <span className="hidden sm:inline">·</span>
+          <span>
+            Created by{' '}
+            <a
+              href="https://github.com/SidloCZ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-emerald-400 hover:underline transition font-medium"
+            >
+              SidloCZ
+            </a>
+          </span>
+        </footer>
+      )}
     </div>
   );
 }

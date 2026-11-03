@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import {
   Star,
   MessageSquare,
-  UserCheck,
   Check,
   ArrowRight,
   ArrowLeft,
@@ -89,7 +88,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   }, [suggestedHighlights, sortMode]);
 
   return (
-    <div className="w-full max-w-6xl h-[calc(100dvh-6.5rem)] max-h-[860px] flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-md overflow-hidden">
+    <div className="w-full max-w-6xl h-[calc(100dvh-5rem)] max-h-[860px] flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-5 shadow-2xl backdrop-blur-md overflow-hidden">
       {/* 1. Header (Pevná horní lišta) */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-800">
         <div>
@@ -212,56 +211,56 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
         </div>
       </div>
 
-      {/* 3. Cards Grid (Jediná scrollovatelná oblast, plně přizpůsobená výšce) */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {/* 3. Cards Grid (Scrollovatelná oblast se zachováním plné výšky karet) */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 auto-rows-max content-start">
         {sortedHighlights.map(({ observation, score }) => {
           const isSelected = selectedIds.has(observation.id);
           const photoUrl = getObservationPhotoUrl(observation, 'medium');
-          const commonName = observation.taxon?.preferred_common_name || observation.taxon?.name || 'Pozorování';
-          const latinName = observation.taxon?.name;
-          const idCount = observation.identifications_count || 0;
+          const scientificName = observation.taxon?.name || (locale === 'cs' ? 'Neznámý taxon' : 'Unknown taxon');
+          const rank = observation.taxon?.rank;
+          const isItalicRank = !rank || ['species', 'genus', 'subspecies', 'variety', 'form'].includes(rank);
 
           return (
             <div
               key={observation.id}
               onClick={() => onToggleHighlight(observation.id)}
-              className={`group relative flex flex-col rounded-xl overflow-hidden border cursor-pointer transition select-none ${isSelected
-                ? 'border-emerald-500/80 bg-slate-800/80 shadow-md'
-                : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 opacity-70 hover:opacity-100'
+              className={`group relative flex flex-col rounded-xl overflow-hidden border cursor-pointer transition select-none shrink-0 bg-slate-950 ${isSelected
+                ? 'border-emerald-500 bg-slate-900/90 shadow-md ring-1 ring-emerald-500/50'
+                : 'border-slate-800 hover:border-slate-700 opacity-80 hover:opacity-100'
                 }`}
             >
-              {/* Photo banner */}
-              <div className="relative w-full h-28 sm:h-32 bg-slate-900 overflow-hidden shrink-0">
+              {/* Photo banner with fixed height to guarantee full visibility */}
+              <div className="relative w-full h-44 sm:h-48 md:h-52 bg-slate-900 overflow-hidden shrink-0">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
-                    alt={commonName}
+                    alt={scientificName}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-600 bg-slate-950">
-                    Bez fotografie (zvuk / záznam)
+                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-500 bg-slate-950 p-2 text-center">
+                    {locale === 'cs' ? 'Bez fotografie' : 'No photo'}
                   </div>
                 )}
 
                 {/* Selection toggle badge */}
                 <div
-                  className={`absolute top-2 right-2 w-5 h-5 rounded-md flex items-center justify-center transition ${isSelected
-                    ? 'bg-emerald-500 text-slate-950 shadow'
+                  className={`absolute top-2 right-2 w-5 h-5 rounded-md flex items-center justify-center transition shadow ${isSelected
+                    ? 'bg-emerald-500 text-slate-950 font-bold'
                     : 'bg-slate-900/80 text-transparent border border-white/20'
                     }`}
                 >
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
 
-                {/* Date badge */}
-                <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-slate-950/80 backdrop-blur-sm text-[10px] text-slate-300 font-mono">
+                {/* Date badge in bottom-left */}
+                <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[10px] text-slate-300 font-mono shadow border border-slate-800/60">
                   {formatLocalizedDate(observation.observed_on, locale)}
                 </div>
 
                 {/* Dynamic sort metric badge in bottom right corner of photo */}
-                <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[11px] font-semibold flex items-center gap-1 shadow border border-slate-800">
+                <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[11px] font-semibold flex items-center gap-1 shadow border border-slate-800">
                   {sortMode === 'faves' && (
                     <span className="text-amber-400 flex items-center gap-1" title={locale === 'cs' ? 'Počet oblíbení' : 'Favorites'}>
                       <Star className="w-3 h-3 fill-amber-400" />
@@ -289,94 +288,19 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 </div>
               </div>
 
-              {/* Text body */}
-              <div className="p-3 flex flex-col flex-1 justify-between gap-1.5">
-                <div>
-                  <h3 className="text-xs sm:text-sm font-semibold text-white line-clamp-1" title={commonName}>
-                    {commonName}
-                  </h3>
-                  {latinName && (
-                    <p className="text-[11px] italic text-slate-400 line-clamp-1">
-                      {latinName}
-                    </p>
-                  )}
-                  {observation.place_guess && (
-                    <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5" title={observation.place_guess}>
-                      {observation.place_guess}
-                    </p>
-                  )}
-                </div>
-
-                {/* Metrics bar */}
-                <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60 mt-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`flex items-center gap-0.5 font-medium text-[11px] transition ${
-                        sortMode === 'faves'
-                          ? 'text-amber-300 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20'
-                          : 'text-amber-400'
-                      }`}
-                      title={locale === 'cs' ? 'Počet oblíbení' : 'Favorites'}
-                    >
-                      <Star className="w-3 h-3 fill-amber-400" />
-                      {observation.faves_count || 0}
-                    </span>
-                    <span
-                      className={`flex items-center gap-0.5 font-medium text-[11px] transition ${
-                        sortMode === 'comments'
-                          ? 'text-cyan-300 bg-cyan-500/10 px-1 py-0.5 rounded border border-cyan-500/20'
-                          : 'text-cyan-400'
-                      }`}
-                      title={locale === 'cs' ? 'Počet komentářů' : 'Comments'}
-                    >
-                      <MessageSquare className="w-3 h-3 fill-cyan-400" />
-                      {observation.comments_count || 0}
-                    </span>
-                    <span
-                      className="flex items-center gap-0.5 text-emerald-400 font-medium text-[11px]"
-                      title={`Počet určení: ${idCount} (${idCount > 2 ? `bonus +${(idCount - 2) * 0.5} b.` : 'základní'})`}
-                    >
-                      <UserCheck className="w-3 h-3" />
-                      {idCount}
-                    </span>
-                  </div>
-
-                  {/* Pravý dolní roh karty s aktuální metrikou řazení */}
-                  <div>
-                    {sortMode === 'faves' && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[11px]">
-                        <Star className="w-3 h-3 fill-amber-400" />
-                        <span>{observation.faves_count || 0}</span>
-                        <span className="text-[10px] text-amber-400/80 font-normal">
-                          {locale === 'cs' ? 'oblíb.' : 'faves'}
-                        </span>
-                      </span>
-                    )}
-                    {sortMode === 'comments' && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-[11px]">
-                        <MessageSquare className="w-3 h-3 fill-cyan-400" />
-                        <span>{observation.comments_count || 0}</span>
-                        <span className="text-[10px] text-cyan-400/80 font-normal">
-                          {locale === 'cs' ? 'koment.' : 'comments'}
-                        </span>
-                      </span>
-                    )}
-                    {sortMode === 'score' && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-[11px]">
-                        <Sparkles className="w-3 h-3 text-emerald-400" />
-                        <span>{score}&nbsp;b.</span>
-                        <span className="text-[10px] text-emerald-400/80 font-normal">
-                          {locale === 'cs' ? 'skóre' : 'score'}
-                        </span>
-                      </span>
-                    )}
-                    {sortMode === 'date' && (
-                      <span className="text-[10px] text-slate-400 font-mono font-medium">
-                        {score}&nbsp;b.
-                      </span>
-                    )}
-                  </div>
-                </div>
+              {/* Malá lišta pod fotkou s vědeckým názvem taxonu a hypertextovým odkazem na pozorování */}
+              <div className="h-8 px-2.5 bg-slate-950/95 border-t border-slate-800/80 flex items-center shrink-0">
+                <a
+                  href={`https://www.inaturalist.org/observations/${observation.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`truncate text-xs text-slate-300 hover:text-emerald-400 hover:underline transition font-medium ${isItalicRank ? 'italic' : ''
+                    }`}
+                  title={`${scientificName} (iNaturalist #${observation.id})`}
+                >
+                  {scientificName}
+                </a>
               </div>
             </div>
           );
