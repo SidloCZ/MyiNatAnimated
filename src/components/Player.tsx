@@ -22,9 +22,10 @@ import { renderDopamineFrame } from '../engine/dopamineCanvas';
 import { getPlaybackStatsAtTime, formatCzechDate } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
-import { VideoAspectRatio, ExportProgress, ExportConfig } from '../types/export';
+import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat } from '../types/export';
 import { exportToMp4 } from '../engine/videoExporter';
 import { exportToGif } from '../engine/gifExporter';
+import { exportToApng } from '../engine/apngExporter';
 
 interface PlayerProps {
   timeline: TimelineData;
@@ -183,6 +184,7 @@ export const Player: React.FC<PlayerProps> = ({
       attributionControl: false,
       maxTileCacheSize: 3000,
       renderWorldCopies: false,
+      preserveDrawingBuffer: true,
     });
 
     cancelBufferingRef.current = false;
@@ -345,7 +347,7 @@ export const Player: React.FC<PlayerProps> = ({
     }
   };
 
-  // Offline frame renderer for deterministic video and GIF export
+  // Offline frame renderer for deterministic video, GIF and APNG export
   const renderFrameForExport = async (timeSec: number, targetCanvas: HTMLCanvasElement) => {
     const map = mapRef.current;
     if (!map) return;
@@ -361,15 +363,28 @@ export const Player: React.FC<PlayerProps> = ({
     // Wait for map tiles to settle completely before grabbing frame
     if (!map.areTilesLoaded()) {
       await waitForMapIdle(map, 800);
-    } else {
-      await new Promise<void>((resolve) => {
-        map.once('render', () => resolve());
-        setTimeout(resolve, 40);
-      });
     }
+
+    // Force MapLibre to paint WebGL buffer for this exact frame
+    map.triggerRepaint();
+    await new Promise<void>((resolve) => {
+      let resolved = false;
+      const onRender = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
+      };
+      map.once('render', onRender);
+      setTimeout(onRender, 60);
+    });
 
     const targetCtx = targetCanvas.getContext('2d');
     if (!targetCtx) return;
+
+    // Fill background color matching map style so no black borders appear
+    targetCtx.fillStyle = mapStyleKey === 'dark' ? '#0f172a' : '#f8fafc';
+    targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
 
     // 1. Draw MapLibre canvas
     const mapCanvas = map.getCanvas();
@@ -394,7 +409,7 @@ export const Player: React.FC<PlayerProps> = ({
     });
   };
 
-  const handleStartExport = async (format: 'mp4' | 'gif', aspectRatio: VideoAspectRatio) => {
+  const handleStartExport = async (format: ExportFormat, aspectRatio: VideoAspectRatio) => {
     setIsPlaying(false);
     setDownloadUrl(null);
 
@@ -411,7 +426,14 @@ export const Player: React.FC<PlayerProps> = ({
     if (format === 'gif') {
       width = Math.round(width / 2.5);
       height = Math.round(height / 2.5);
+    } else if (format === 'apng') {
+      width = Math.round(width / 2);
+      height = Math.round(height / 2);
     }
+
+    // Enforce even dimensions required for video and encoders
+    width = Math.floor(width / 2) * 2;
+    height = Math.floor(height / 2) * 2;
 
     const config: ExportConfig = {
       format,
@@ -432,8 +454,17 @@ export const Player: React.FC<PlayerProps> = ({
           renderFrameForExport,
           setExportProgress
         );
-      } else {
+      } else if (format === 'gif') {
         blob = await exportToGif(
+          timeline.duration,
+          renderFrameForExport,
+          setExportProgress,
+          15,
+          width,
+          height
+        );
+      } else {
+        blob = await exportToApng(
           timeline.duration,
           renderFrameForExport,
           setExportProgress,
@@ -443,8 +474,13 @@ export const Player: React.FC<PlayerProps> = ({
         );
       }
 
+      let extension = format === 'apng' ? 'png' : format;
+      if (format === 'mp4' && blob.type.includes('webm')) {
+        extension = 'webm';
+      }
+
       const url = URL.createObjectURL(blob);
-      const filename = `myinat_${username}_${aspectRatio.replace(':', 'x')}.${format}`;
+      const filename = `myinat_${username}_${aspectRatio.replace(':', 'x')}.${extension}`;
       setDownloadUrl(url);
       setDownloadFilename(filename);
 

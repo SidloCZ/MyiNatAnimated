@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Download, Loader2, Check } from 'lucide-react';
-import { VideoAspectRatio, ExportProgress } from '../types/export';
+import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle } from 'lucide-react';
+import { VideoAspectRatio, ExportProgress, ExportFormat } from '../types/export';
 
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartExport: (format: 'mp4' | 'gif', aspectRatio: VideoAspectRatio) => Promise<void>;
+  onStartExport: (format: ExportFormat, aspectRatio: VideoAspectRatio) => Promise<void>;
   exportProgress: ExportProgress | null;
   downloadUrl: string | null;
   downloadFilename: string;
@@ -19,15 +19,16 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   downloadUrl,
   downloadFilename,
 }) => {
-  const [format, setFormat] = useState<'mp4' | 'gif'>('mp4');
+  const [format, setFormat] = useState<ExportFormat>('mp4');
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>('16:9');
   const isExporting = exportProgress !== null && exportProgress.phase !== 'completed' && exportProgress.phase !== 'error';
+  const hasError = exportProgress !== null && exportProgress.phase === 'error';
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative">
+      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative">
         <button
           type="button"
           onClick={onClose}
@@ -41,7 +42,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           Exportovat animaci
         </h3>
         <p className="text-xs text-slate-400 mb-6">
-          Zvolte formát a poměr stran pro export do videa nebo animovaného obrázku.
+          Zvolte formát a&nbsp;poměr stran pro export do videa nebo animovaného obrázku.
         </p>
 
         {/* Format selector */}
@@ -49,39 +50,56 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
             Formát souboru
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
               type="button"
               disabled={isExporting}
               onClick={() => setFormat('mp4')}
-              className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition ${
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
                 format === 'mp4'
-                  ? 'border-emerald-500 bg-emerald-500/10 text-white'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
               }`}
             >
-              <Film className="w-4 h-4 text-emerald-400" />
-              <div>
-                <div className="text-xs font-semibold">MP4 video</div>
-                <div className="text-[10px] text-slate-400">Se zvukem a 30 FPS</div>
+              <div className="flex items-center gap-1.5">
+                <Film className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-white">MP4 video</span>
               </div>
+              <div className="text-[10px] text-slate-400">Se zvukem, 30&nbsp;FPS</div>
+            </button>
+
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => setFormat('apng')}
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
+                format === 'apng'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
+                  : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-semibold text-white">APNG</span>
+              </div>
+              <div className="text-[10px] text-slate-400">Plné barvy, 15&nbsp;FPS</div>
             </button>
 
             <button
               type="button"
               disabled={isExporting}
               onClick={() => setFormat('gif')}
-              className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition ${
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
                 format === 'gif'
-                  ? 'border-emerald-500 bg-emerald-500/10 text-white'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
               }`}
             >
-              <ImageIcon className="w-4 h-4 text-cyan-400" />
-              <div>
-                <div className="text-xs font-semibold">Animovaný GIF</div>
-                <div className="text-[10px] text-slate-400">Bez zvuku, 15 FPS</div>
+              <div className="flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-semibold text-white">GIF</span>
               </div>
+              <div className="text-[10px] text-slate-400">256 barev, 15&nbsp;FPS</div>
             </button>
           </div>
         </div>
@@ -155,6 +173,19 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           </div>
         )}
 
+        {/* Error alert box */}
+        {hasError && (
+          <div className="mb-6 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-rose-200">Export se nezdařil</div>
+              <div className="mt-0.5 text-rose-300/90 text-[11px]">
+                {exportProgress.errorMessage || 'Došlo k&nbsp;neočekávané chybě při vykreslování souboru.'}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Completed download action */}
         {downloadUrl ? (
           <a
@@ -180,4 +211,3 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
     </div>
   );
 };
-
