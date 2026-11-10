@@ -98,7 +98,12 @@ export function App() {
         if (activeIds.has(id)) next.add(id);
       }
       if (next.size === 0) {
-        highlights.slice(0, recommendedCount).forEach(h => next.add(h.observation.id));
+        const topByScore = [...highlights].sort((a, b) => {
+          const diffScore = b.score - a.score;
+          if (diffScore !== 0) return diffScore;
+          return (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+        });
+        topByScore.slice(0, recommendedCount).forEach(h => next.add(h.observation.id));
       }
       return next;
     });
@@ -114,8 +119,15 @@ export function App() {
     const highlights = pickSuggestedHighlights(pool, maxPoolSize);
     setSuggestedHighlights(highlights);
 
-    // Pre-select recommended count of highlights by default
-    const defaultIds = new Set(highlights.slice(0, recommendedCount).map(h => h.observation.id));
+    // Pre-select recommended count of highlights by default sorted by overall score
+    const topByScore = [...highlights].sort((a, b) => {
+      const diffScore = b.score - a.score;
+      if (diffScore !== 0) return diffScore;
+      const diffFaves = (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+      if (diffFaves !== 0) return diffFaves;
+      return (b.observation.comments_count || 0) - (a.observation.comments_count || 0);
+    });
+    const defaultIds = new Set(topByScore.slice(0, recommendedCount).map(h => h.observation.id));
     setSelectedHighlightIds(defaultIds);
 
     setStep('highlights');
@@ -146,13 +158,23 @@ export function App() {
 
   // Step 2: Toggle highlights in/out
   const handleToggleHighlight = (id: number) => {
-    const next = new Set(selectedHighlightIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    setSelectedHighlightIds(next);
+    setSelectedHighlightIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectBatch = (ids: number[]) => {
+    setSelectedHighlightIds(new Set(ids));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedHighlightIds(new Set());
   };
 
   // Step 3: Preparation (deterministic pre-computation)
@@ -308,6 +330,8 @@ export function App() {
             onFilterIsolatedChange={handleFilterIsolatedChange}
             isolatedCount={isolatedCount}
             onToggleHighlight={handleToggleHighlight}
+            onSelectBatch={handleSelectBatch}
+            onClearSelection={handleClearSelection}
             onProceed={handleStartPreparation}
             onBack={() => setStep('search')}
           />

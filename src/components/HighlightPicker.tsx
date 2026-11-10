@@ -27,6 +27,8 @@ interface HighlightPickerProps {
   onFilterIsolatedChange: (filter: boolean) => void;
   isolatedCount: number;
   onToggleHighlight: (id: number) => void;
+  onSelectBatch?: (ids: number[]) => void;
+  onClearSelection?: () => void;
   onProceed: () => void;
   onBack: () => void;
   locale?: Language;
@@ -48,6 +50,8 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   onFilterIsolatedChange,
   isolatedCount,
   onToggleHighlight,
+  onSelectBatch,
+  onClearSelection,
   onProceed,
   onBack,
   locale = 'en',
@@ -185,26 +189,33 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
           <button
             type="button"
             onClick={() => {
-              const topTarget = sortedHighlights.slice(0, Math.max(1, recommendedCount)).map(h => h.observation.id);
-              const hasAllRecommended = topTarget.every(id => selectedIds.has(id));
-              const idsToSelect = hasAllRecommended
-                ? sortedHighlights.map(h => h.observation.id)
-                : topTarget;
+              const topByOverallScore = [...suggestedHighlights]
+                .sort((a, b) => {
+                  const diffScore = b.score - a.score;
+                  if (diffScore !== 0) return diffScore;
+                  const diffFaves = (b.observation.faves_count || 0) - (a.observation.faves_count || 0);
+                  if (diffFaves !== 0) return diffFaves;
+                  return (b.observation.comments_count || 0) - (a.observation.comments_count || 0);
+                })
+                .slice(0, Math.max(1, recommendedCount))
+                .map(h => h.observation.id);
 
-              idsToSelect.forEach(id => {
-                if (!selectedIds.has(id)) onToggleHighlight(id);
-              });
+              if (onSelectBatch) {
+                onSelectBatch(topByOverallScore);
+              }
             }}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 hover:border-slate-600 transition cursor-pointer font-medium"
           >
             {t.selectAllBtn}
           </button>
           <button
             type="button"
             onClick={() => {
-              selectedIds.forEach(id => onToggleHighlight(id));
+              if (onClearSelection) {
+                onClearSelection();
+              }
             }}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 transition cursor-pointer font-medium"
           >
             {t.deselectAllBtn}
           </button>
