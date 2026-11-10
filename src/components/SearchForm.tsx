@@ -149,8 +149,9 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-      <div className="flex items-center justify-between mb-6">
+    <div className="relative w-full max-w-xl mx-auto" ref={timeframeRef}>
+      <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             {t.searchTitle}
@@ -189,7 +190,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
           </div>
         </div>
 
-        <div ref={timeframeRef}>
+        <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
               {locale === 'cs' ? 'Období pozorování' : 'Observation timeframe'}
@@ -322,41 +323,6 @@ export const SearchForm: React.FC<SearchFormProps> = ({
               </button>
             </div>
           </div>
-
-          {/* Date Picker floating overlay that opens directly below without stretching the card */}
-          {isCalendarOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 z-50">
-              <DateRangeCalendar
-                dateFrom={dateFrom}
-                dateTo={dateTo}
-                activeField={activeField}
-                onSelectDate={(field, dateStr) => {
-                  if (field === 'from') {
-                    setDateFrom(dateStr);
-                    if (dateTo && dateStr > dateTo) {
-                      setDateTo(dateStr);
-                    }
-                    setActiveField('to');
-                  } else {
-                    setDateTo(dateStr);
-                    if (dateFrom && dateStr < dateFrom) {
-                      setDateFrom(dateStr);
-                    }
-                  }
-                }}
-                onSelectRange={(fromStr, toStr) => {
-                  setDateFrom(fromStr);
-                  setDateTo(toStr);
-                }}
-                onClear={() => {
-                  setDateFrom('');
-                  setDateTo('');
-                }}
-                onClose={() => setIsCalendarOpen(false)}
-                locale={locale}
-              />
-            </div>
-          )}
         </div>
 
         {errorText && (
@@ -387,6 +353,42 @@ export const SearchForm: React.FC<SearchFormProps> = ({
         </button>
       </form>
     </div>
-  );
+
+    {/* Date Picker floating overlay: on desktop opens to the RIGHT without moving main window, on mobile opens below */}
+    {isCalendarOpen && (
+      <div className="z-50 lg:absolute lg:left-[calc(100%+1.25rem)] lg:top-[160px] lg:w-[350px] max-lg:absolute max-lg:top-full max-lg:left-0 max-lg:right-0 max-lg:mt-3">
+        <DateRangeCalendar
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          activeField={activeField}
+          onSelectDate={(field, dateStr) => {
+            if (field === 'from') {
+              setDateFrom(dateStr);
+              if (dateTo && dateStr > dateTo) {
+                setDateTo(dateStr);
+              }
+              setActiveField('to');
+            } else {
+              setDateTo(dateStr);
+              if (dateFrom && dateStr < dateFrom) {
+                setDateFrom(dateStr);
+              }
+            }
+          }}
+          onSelectRange={(fromStr, toStr) => {
+            setDateFrom(fromStr);
+            setDateTo(toStr);
+          }}
+          onClear={() => {
+            setDateFrom('');
+            setDateTo('');
+          }}
+          onClose={() => setIsCalendarOpen(false)}
+          locale={locale}
+        />
+      </div>
+    )}
+  </div>
+);
 };
 

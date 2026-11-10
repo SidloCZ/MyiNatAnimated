@@ -398,36 +398,28 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
                 dateStr >= activeRange.start &&
                 dateStr <= activeRange.end;
 
-              const isRangeStart = activeRange && dateStr === activeRange.start;
-              const isRangeEnd = activeRange && dateStr === activeRange.end;
-
-              let btnClass = 'text-slate-300 hover:bg-slate-800 hover:text-white';
+              let btnClass = 'text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg';
 
               if (!isCurrentMonth) {
-                btnClass = 'text-slate-600 hover:text-slate-400 hover:bg-slate-800/50';
+                btnClass = 'text-slate-600 hover:text-slate-400 hover:bg-slate-800/40 rounded-lg';
               }
 
               if (isEndpoint) {
-                btnClass = 'bg-emerald-500 text-slate-950 font-bold shadow-md hover:bg-emerald-400';
+                btnClass = 'bg-emerald-500 text-slate-950 font-bold shadow-md hover:bg-emerald-400 rounded-lg';
               } else if (inRange) {
-                btnClass = 'bg-emerald-500/20 text-emerald-200 font-medium hover:bg-emerald-500/30';
+                btnClass = 'bg-emerald-500/20 text-emerald-200 font-semibold hover:bg-emerald-500/30 rounded-lg';
               } else if (isToday) {
-                btnClass = 'border border-emerald-500/50 text-emerald-300 font-semibold hover:bg-slate-800';
+                btnClass = 'border border-emerald-500/50 text-emerald-300 font-semibold hover:bg-slate-800 rounded-lg';
               }
 
               return (
-                <div
-                  key={dateStr}
-                  className={`relative flex items-center justify-center ${
-                    inRange && !isEndpoint ? 'bg-emerald-500/10' : ''
-                  } ${isRangeStart ? 'rounded-l-md' : ''} ${isRangeEnd ? 'rounded-r-md' : ''}`}
-                >
+                <div key={dateStr} className="flex items-center justify-center">
                   <button
                     type="button"
                     onMouseDown={() => handleDayMouseDown(dateStr)}
                     onMouseEnter={() => handleDayMouseEnter(dateStr)}
                     onClick={() => handleDayClick(dateStr)}
-                    className={`w-7 h-7 rounded-md text-[11px] flex items-center justify-center transition-all cursor-pointer relative ${btnClass}`}
+                    className={`w-7 h-7 text-[11px] flex items-center justify-center transition-all cursor-pointer ${btnClass}`}
                   >
                     {dayNumber}
                   </button>
