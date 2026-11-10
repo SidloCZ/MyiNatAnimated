@@ -11,6 +11,7 @@ export interface ExportConfig {
   width: number;
   height: number;
   quality: number; // 0-1
+  speed?: number;
 }
 
 export interface ExportProgress {

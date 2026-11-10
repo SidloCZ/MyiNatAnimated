@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle, RotateCcw, Moon, Sun, Layers, Compass } from 'lucide-react';
 import { VideoAspectRatio, ExportProgress, ExportFormat, MapStyleKey } from '../types/export';
 import { Language, translations } from '../i18n/translations';
+import { SpeedSlider } from './SpeedSlider';
 
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartExport: (format: ExportFormat, aspectRatio: VideoAspectRatio) => Promise<void>;
+  onStartExport: (format: ExportFormat, aspectRatio: VideoAspectRatio, speed: number) => Promise<void>;
   onResetExport: () => void;
   exportProgress: ExportProgress | null;
   downloadUrl: string | null;
@@ -14,6 +15,7 @@ interface ExportDialogProps {
   selectedMapStyle?: MapStyleKey;
   onSelectMapStyle?: (style: MapStyleKey) => void;
   locale?: Language;
+  initialSpeed?: number;
 }
 
 export const ExportDialog: React.FC<ExportDialogProps> = ({
@@ -27,9 +29,11 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   selectedMapStyle = 'dark',
   onSelectMapStyle,
   locale = 'en',
+  initialSpeed = 1.0,
 }) => {
   const [format, setFormat] = useState<ExportFormat>('mp4');
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>('16:9');
+  const [speed, setSpeed] = useState<number>(initialSpeed);
   const isExporting = exportProgress !== null && exportProgress.phase !== 'completed' && exportProgress.phase !== 'error';
   const hasError = exportProgress !== null && exportProgress.phase === 'error';
 
@@ -60,6 +64,13 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
   const handleSelectAspectRatio = (newRatio: VideoAspectRatio) => {
     setAspectRatio(newRatio);
+    if (downloadUrl) {
+      onResetExport();
+    }
+  };
+
+  const handleSelectSpeed = (newSpeed: number) => {
+    setSpeed(newSpeed);
     if (downloadUrl) {
       onResetExport();
     }
@@ -221,6 +232,24 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           </div>
         </div>
 
+        {/* Playback speed slider */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              {t.exportSpeedLabel}
+            </label>
+            <span className="text-xs font-bold text-emerald-400 tabular-nums px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+              {speed}x
+            </span>
+          </div>
+          <SpeedSlider
+            value={speed}
+            onChange={handleSelectSpeed}
+            disabled={isExporting}
+            resetTooltip={t.resetSpeedTooltip}
+          />
+        </div>
+
         {/* Progress bar during rendering */}
         {isExporting && exportProgress && (
           <div className="mb-6 space-y-2">
@@ -277,7 +306,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           <button
             type="button"
             disabled={isExporting}
-            onClick={() => onStartExport(format, aspectRatio)}
+            onClick={() => onStartExport(format, aspectRatio, speed)}
             className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
           >
             <Download className="w-4 h-4" />

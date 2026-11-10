@@ -84,11 +84,14 @@ async function exportWithWebCodecs(
   renderFrame: VideoRenderFrameCallback,
   onProgress?: (progress: ExportProgress) => void
 ): Promise<Blob> {
+  const speed = config.speed && config.speed > 0 ? config.speed : 1.0;
+  const outputDuration = durationSeconds / speed;
+
   // H.264 requires even dimensions
   const width = Math.floor(config.width / 2) * 2;
   const height = Math.floor(config.height / 2) * 2;
   const fps = config.fps || 30;
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const totalFrames = Math.max(1, Math.ceil(outputDuration * fps));
 
   const videoCodec = await findSupportedVideoCodec(width, height, fps);
 
@@ -125,7 +128,11 @@ async function exportWithWebCodecs(
     });
 
     try {
-      const audioBuffer = await SoundEngine.renderOfflineAudio(soundCues, durationSeconds);
+      const scaledCues = soundCues.map((c) => ({
+        ...c,
+        t: c.t / speed,
+      }));
+      const audioBuffer = await SoundEngine.renderOfflineAudio(scaledCues, outputDuration);
       const sampleRate = audioBuffer.sampleRate;
       const numChannels = audioBuffer.numberOfChannels;
 
@@ -205,10 +212,11 @@ async function exportWithWebCodecs(
   for (let f = 0; f < totalFrames; f++) {
     if (videoError) throw videoError;
 
-    const t = f / fps;
-    await renderFrame(t, canvas);
+    const outputTime = f / fps;
+    const timelineTime = Math.min(durationSeconds, outputTime * speed);
+    await renderFrame(timelineTime, canvas);
 
-    const timestampUs = Math.round((f / fps) * 1_000_000);
+    const timestampUs = Math.round(outputTime * 1_000_000);
     const videoFrame = new VideoFrame(canvas, {
       timestamp: timestampUs,
       duration: Math.round((1 / fps) * 1_000_000),
@@ -256,6 +264,9 @@ async function exportWithMediaRecorder(
   renderFrame: VideoRenderFrameCallback,
   onProgress?: (progress: ExportProgress) => void
 ): Promise<Blob> {
+  const speed = config.speed && config.speed > 0 ? config.speed : 1.0;
+  const outputDuration = durationSeconds / speed;
+
   const width = Math.floor(config.width / 2) * 2;
   const height = Math.floor(config.height / 2) * 2;
   const fps = config.fps || 30;
@@ -278,8 +289,9 @@ async function exportWithMediaRecorder(
       }
       const startTime = audioCtx.currentTime + 0.05;
       for (const cue of soundCues) {
-        if (cue.t >= 0 && cue.t < durationSeconds) {
-          SoundEngine.renderCueIntoContext(audioCtx, dest, cue, startTime + cue.t);
+        const cueTime = cue.t / speed;
+        if (cueTime >= 0 && cueTime < outputDuration) {
+          SoundEngine.renderCueIntoContext(audioCtx, dest, cue, startTime + cueTime);
         }
       }
     } catch {
@@ -306,12 +318,13 @@ async function exportWithMediaRecorder(
     if (e.data && e.data.size > 0) chunks.push(e.data);
   };
 
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const totalFrames = Math.max(1, Math.ceil(outputDuration * fps));
   recorder.start();
 
   for (let f = 0; f < totalFrames; f++) {
-    const t = f / fps;
-    await renderFrame(t, canvas);
+    const outputTime = f / fps;
+    const timelineTime = Math.min(durationSeconds, outputTime * speed);
+    await renderFrame(timelineTime, canvas);
     await new Promise((r) => setTimeout(r, 1000 / fps));
 
     if (onProgress) {

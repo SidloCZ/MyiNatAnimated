@@ -11,10 +11,13 @@ export async function exportToGif(
   onProgress?: (progress: ExportProgress) => void,
   fps = 15,
   width = 640,
-  height = 360
+  height = 360,
+  speed = 1.0
 ): Promise<Blob> {
   const gif = GIFEncoder();
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const effectiveSpeed = speed > 0 ? speed : 1.0;
+  const outputDuration = durationSeconds / effectiveSpeed;
+  const totalFrames = Math.max(1, Math.ceil(outputDuration * fps));
   const delayMs = Math.round(1000 / fps);
 
   const canvas = document.createElement('canvas');
@@ -24,8 +27,9 @@ export async function exportToGif(
   if (!ctx) throw new Error('Cannot create a 2D canvas for GIF encoding');
 
   for (let f = 0; f < totalFrames; f++) {
-    const t = f / fps;
-    await renderFrame(t, canvas);
+    const outputTime = f / fps;
+    const timelineTime = Math.min(durationSeconds, outputTime * effectiveSpeed);
+    await renderFrame(timelineTime, canvas);
 
     const imgData = ctx.getImageData(0, 0, width, height);
     const palette = quantize(imgData.data, 256, { format: 'rgb565' });

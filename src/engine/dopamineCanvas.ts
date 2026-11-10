@@ -16,10 +16,11 @@ export interface DopamineRenderOptions {
   uiScale?: number;
   locale?: Language;
   hideHighlightCard?: boolean;
+  mapStyle?: string;
 }
 
 export function renderDopamineFrame(options: DopamineRenderOptions) {
-  const { ctx, width, height, timeline, t, project, sprites, isExport } = options;
+  const { ctx, width, height, timeline, t, project, sprites, isExport, mapStyle } = options;
 
   if (!isExport) {
     ctx.clearRect(0, 0, width, height);
@@ -45,6 +46,10 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
     const trailWindow = Math.min(pastEvents.length, 30);
     const startIdx = pastEvents.length - trailWindow;
 
+    const isDarkLine = mapStyle === 'liberty' || mapStyle === 'positron' || mapStyle === 'bright';
+    const lineRgb = isDarkLine ? '15, 23, 42' : '255, 255, 255';
+    const lineAlpha = isDarkLine ? 0.65 : 0.45;
+
     ctx.save();
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
@@ -55,7 +60,7 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
       const p2 = project(pastEvents[i + 1].coordinates);
 
       const ageRatio = (i - startIdx) / trailWindow; // 0 to 1
-      ctx.strokeStyle = `rgba(255, 255, 255, ${ageRatio * 0.45})`;
+      ctx.strokeStyle = `rgba(${lineRgb}, ${ageRatio * lineAlpha})`;
 
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);

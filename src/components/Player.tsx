@@ -25,6 +25,7 @@ import { getPlaybackStatsAtTime } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
 import { TimelineScrubber } from './TimelineScrubber';
+import { SpeedSlider } from './SpeedSlider';
 import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat, MapStyleKey } from '../types/export';
 import { exportToMp4 } from '../engine/videoExporter';
 import { exportToGif } from '../engine/gifExporter';
@@ -110,6 +111,8 @@ export const Player: React.FC<PlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapStyleKey, setMapStyleKey] = useState<MapStyleKey>('dark');
+  const mapStyleKeyRef = useRef(mapStyleKey);
+  mapStyleKeyRef.current = mapStyleKey;
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const styleMenuRef = useRef<HTMLDivElement>(null);
 
@@ -435,6 +438,7 @@ export const Player: React.FC<PlayerProps> = ({
             },
             sprites,
             hideHighlightCard: isUserExploringRef.current || isFlyingBackRef.current,
+            mapStyle: mapStyleKeyRef.current,
           });
 
           ctx.restore();
@@ -664,6 +668,7 @@ export const Player: React.FC<PlayerProps> = ({
       isExport: true,
       aspectRatio: currentExportAspectRatioRef.current,
       locale,
+      mapStyle: mapStyleKey,
     });
   };
 
@@ -675,7 +680,7 @@ export const Player: React.FC<PlayerProps> = ({
     setExportProgress(null);
   };
 
-  const handleStartExport = async (format: ExportFormat, aspectRatio: VideoAspectRatio) => {
+  const handleStartExport = async (format: ExportFormat, aspectRatio: VideoAspectRatio, speed = 1.0) => {
     setIsPlaying(false);
     currentExportAspectRatioRef.current = aspectRatio;
     if (downloadUrl) {
@@ -683,7 +688,7 @@ export const Player: React.FC<PlayerProps> = ({
     }
     setDownloadUrl(null);
 
-    logToTerminal('info', `Export started: ${format.toUpperCase()} (${aspectRatio})`);
+    logToTerminal('info', `Export started: ${format.toUpperCase()} (${aspectRatio}, ${speed}x)`);
 
     let width = 1920;
     let height = 1080;
@@ -714,6 +719,7 @@ export const Player: React.FC<PlayerProps> = ({
       width,
       height,
       quality: 0.9,
+      speed,
     };
 
     try {
@@ -733,7 +739,8 @@ export const Player: React.FC<PlayerProps> = ({
           setExportProgress,
           15,
           width,
-          height
+          height,
+          speed
         );
       } else {
         blob = await exportToApng(
@@ -742,7 +749,8 @@ export const Player: React.FC<PlayerProps> = ({
           setExportProgress,
           15,
           width,
-          height
+          height,
+          speed
         );
       }
 
@@ -752,7 +760,8 @@ export const Player: React.FC<PlayerProps> = ({
       }
 
       const url = URL.createObjectURL(blob);
-      const filename = `myinat_${username}_${aspectRatio.replace(':', 'x')}.${extension}`;
+      const speedSuffix = speed !== 1.0 ? `_${speed}x` : '';
+      const filename = `myinat_${username}_${aspectRatio.replace(':', 'x')}${speedSuffix}.${extension}`;
       setDownloadUrl(url);
       setDownloadFilename(filename);
 
@@ -1096,22 +1105,13 @@ export const Player: React.FC<PlayerProps> = ({
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
-            {/* Playback speed selector */}
-            <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs tabular-nums text-slate-400">
-              {[0.5, 1.0, 2.0].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setPlaybackSpeed(s)}
-                  className={`px-2 py-1 rounded-lg transition ${playbackSpeed === s
-                    ? 'bg-emerald-500/20 text-emerald-400 font-semibold'
-                    : 'hover:text-white'
-                    }`}
-                >
-                  {s}x
-                </button>
-              ))}
-            </div>
+            {/* Playback speed slider */}
+            <SpeedSlider
+              value={playbackSpeed}
+              onChange={setPlaybackSpeed}
+              compact
+              resetTooltip={t.resetSpeedTooltip}
+            />
           </div>
 
           <div className="flex items-center gap-2">
@@ -1154,6 +1154,7 @@ export const Player: React.FC<PlayerProps> = ({
         selectedMapStyle={mapStyleKey}
         onSelectMapStyle={handleStyleChange}
         locale={locale}
+        initialSpeed={playbackSpeed}
       />
     </div>
   );

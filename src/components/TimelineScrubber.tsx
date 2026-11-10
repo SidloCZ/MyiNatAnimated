@@ -160,8 +160,8 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
         style={{ left: `${progressPercent}%` }}
       >
         <div
-          className={`w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-950 shadow-[0_0_12px_rgba(52,211,153,0.7)] transition-transform duration-100 ${
-            isDragging ? 'scale-125 bg-emerald-300 ring-4 ring-emerald-500/20' : 'scale-100 group-hover:scale-125'
+          className={`w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-950 shadow-sm transition-transform duration-100 ${
+            isDragging ? 'scale-125 bg-emerald-300' : 'scale-100 group-hover:scale-125'
           }`}
         />
       </div>

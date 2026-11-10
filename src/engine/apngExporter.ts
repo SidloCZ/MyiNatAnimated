@@ -185,9 +185,12 @@ export async function exportToApng(
   onProgress?: (progress: ExportProgress) => void,
   fps = 15,
   width = 640,
-  height = 360
+  height = 360,
+  speed = 1.0
 ): Promise<Blob> {
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const effectiveSpeed = speed > 0 ? speed : 1.0;
+  const outputDuration = durationSeconds / effectiveSpeed;
+  const totalFrames = Math.max(1, Math.ceil(outputDuration * fps));
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -195,8 +198,9 @@ export async function exportToApng(
   const framesPngBytes: Uint8Array[] = [];
 
   for (let f = 0; f < totalFrames; f++) {
-    const t = f / fps;
-    await renderFrame(t, canvas);
+    const outputTime = f / fps;
+    const timelineTime = Math.min(durationSeconds, outputTime * effectiveSpeed);
+    await renderFrame(timelineTime, canvas);
 
     const frameBlob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob((b) => resolve(b), 'image/png');
