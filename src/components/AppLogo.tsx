@@ -13,7 +13,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({
     <svg
       version="1.0"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 2048 2048"
+      viewBox="270 185 1435 1270"
       className={className}
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Search, Sparkles, Calendar, User, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, Sparkles, Calendar, User, AlertCircle, X } from 'lucide-react';
 import { DEMO_USER, getDemoObservations } from '../services/demoData';
 import { InatObservation } from '../types/inat';
 import { fetchObservations } from '../services/inatApi';
 import { Language, translations } from '../i18n/translations';
+import { DateRangeCalendar } from './DateRangeCalendar';
 
 interface SearchFormProps {
   onDataLoaded: (observations: InatObservation[], username: string) => void;
@@ -29,10 +30,34 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   });
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [activeField, setActiveField] = useState<'from' | 'to'>('from');
+  const timeframeRef = useRef<HTMLDivElement>(null);
   const [progressText, setProgressText] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const t = translations[locale];
+
+  // Close calendar on outside click
+  useEffect(() => {
+    if (!isCalendarOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (timeframeRef.current && !timeframeRef.current.contains(e.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isCalendarOpen]);
+
+  const formatDisplayDate = (isoStr: string): string => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return isoStr;
+  };
 
   const handleUsernameChange = (val: string) => {
     setUsername(val);
@@ -71,6 +96,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsCalendarOpen(false);
     const cleanUsername = username.trim();
     if (!cleanUsername) {
       setErrorText(locale === 'cs' ? 'Zadejte prosím uživatelské jméno na iNaturalistu.' : 'Please enter an iNaturalist username.');
@@ -163,7 +189,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
           </div>
         </div>
 
-        <div>
+        <div ref={timeframeRef}>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
               {locale === 'cs' ? 'Období pozorování' : 'Observation timeframe'}
@@ -171,21 +197,30 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => handlePreset('year')}
+                onClick={() => {
+                  handlePreset('year');
+                  setIsCalendarOpen(false);
+                }}
                 className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
                 {locale === 'cs' ? 'Minulý rok' : 'Last year'}
               </button>
               <button
                 type="button"
-                onClick={() => handlePreset('summer')}
+                onClick={() => {
+                  handlePreset('summer');
+                  setIsCalendarOpen(false);
+                }}
                 className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
                 {locale === 'cs' ? 'Léto' : 'Summer'}
               </button>
               <button
                 type="button"
-                onClick={() => handlePreset('all')}
+                onClick={() => {
+                  handlePreset('all');
+                  setIsCalendarOpen(false);
+                }}
                 className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
               >
                 {locale === 'cs' ? 'Vše' : 'All'}
@@ -193,28 +228,135 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             </div>
           </div>
 
+          {/* Timeframe picker windows */}
           <div className="grid grid-cols-2 gap-3">
+            {/* "From" window */}
             <div className="relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isCalendarOpen && activeField === 'from') {
+                    setIsCalendarOpen(false);
+                  } else {
+                    setActiveField('from');
+                    setIsCalendarOpen(true);
+                  }
+                }}
                 disabled={isLoading}
-                className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-white text-xs outline-none transition"
-              />
+                className={`w-full flex items-center justify-between pl-10 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-left transition cursor-pointer ${
+                  isCalendarOpen && activeField === 'from'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90 text-white'
+                    : 'border-slate-800 hover:border-slate-700 text-slate-200'
+                }`}
+              >
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
+                <span className={dateFrom ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
+                  {dateFrom ? formatDisplayDate(dateFrom) : (locale === 'cs' ? 'Od (kdykoliv)' : 'From (anytime)')}
+                </span>
+                {dateFrom && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateFrom('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        setDateFrom('');
+                      }
+                    }}
+                    className="p-0.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                    title={locale === 'cs' ? 'Vymazat počáteční datum' : 'Clear start date'}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </span>
+                )}
+              </button>
             </div>
+
+            {/* "To" window */}
             <div className="relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isCalendarOpen && activeField === 'to') {
+                    setIsCalendarOpen(false);
+                  } else {
+                    setActiveField('to');
+                    setIsCalendarOpen(true);
+                  }
+                }}
                 disabled={isLoading}
-                className="w-full pl-10 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-white text-xs outline-none transition"
-              />
+                className={`w-full flex items-center justify-between pl-10 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-left transition cursor-pointer ${
+                  isCalendarOpen && activeField === 'to'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90 text-white'
+                    : 'border-slate-800 hover:border-slate-700 text-slate-200'
+                }`}
+              >
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
+                <span className={dateTo ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
+                  {dateTo ? formatDisplayDate(dateTo) : (locale === 'cs' ? 'Do (kdykoliv)' : 'To (anytime)')}
+                </span>
+                {dateTo && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateTo('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        setDateTo('');
+                      }
+                    }}
+                    className="p-0.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                    title={locale === 'cs' ? 'Vymazat koncové datum' : 'Clear end date'}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </span>
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Date Picker window that opens directly below */}
+          {isCalendarOpen && (
+            <div className="mt-2.5">
+              <DateRangeCalendar
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                activeField={activeField}
+                onSelectDate={(field, dateStr) => {
+                  if (field === 'from') {
+                    setDateFrom(dateStr);
+                    if (dateTo && dateStr > dateTo) {
+                      setDateTo(dateStr);
+                    }
+                    setActiveField('to');
+                  } else {
+                    setDateTo(dateStr);
+                    if (dateFrom && dateStr < dateFrom) {
+                      setDateFrom(dateStr);
+                    }
+                  }
+                }}
+                onSelectRange={(fromStr, toStr) => {
+                  setDateFrom(fromStr);
+                  setDateTo(toStr);
+                }}
+                onClear={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                onClose={() => setIsCalendarOpen(false)}
+                locale={locale}
+              />
+            </div>
+          )}
         </div>
 
         {errorText && (
