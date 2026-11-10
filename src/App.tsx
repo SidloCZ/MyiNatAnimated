@@ -277,11 +277,10 @@ export function App() {
               <button
                 type="button"
                 onClick={() => handleLanguageChange('cs')}
-                className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                  language === 'cs'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`px-2.5 py-1 rounded font-medium transition-colors ${language === 'cs'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 title="Čeština"
               >
                 CZ
@@ -289,11 +288,10 @@ export function App() {
               <button
                 type="button"
                 onClick={() => handleLanguageChange('en')}
-                className={`px-2.5 py-1 rounded font-medium transition-colors ${
-                  language === 'en'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`px-2.5 py-1 rounded font-medium transition-colors ${language === 'en'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 title="English"
               >
                 EN

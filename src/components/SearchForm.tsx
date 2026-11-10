@@ -30,6 +30,9 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   });
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [rawInputFrom, setRawInputFrom] = useState('');
+  const [rawInputTo, setRawInputTo] = useState('');
+  const [isAllRange, setIsAllRange] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
   const timeframeRef = useRef<HTMLDivElement>(null);
@@ -37,6 +40,27 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const t = translations[locale];
+
+  // Sync text inputs whenever dateFrom / dateTo is updated (presets, calendar selection, clear)
+  useEffect(() => {
+    if (!isAllRange) {
+      setRawInputFrom(dateFrom ? dateFrom.replace(/-/g, '/') : '');
+    }
+  }, [dateFrom, isAllRange]);
+
+  useEffect(() => {
+    if (!isAllRange) {
+      setRawInputTo(dateTo ? dateTo.replace(/-/g, '/') : '');
+    }
+  }, [dateTo, isAllRange]);
+
+  // Keep "All" preset text localized if language switches while active
+  useEffect(() => {
+    if (isAllRange) {
+      setRawInputFrom(t.sinceBegan);
+      setRawInputTo(t.untilNow);
+    }
+  }, [locale, isAllRange, t.sinceBegan, t.untilNow]);
 
   // Close calendar on outside click
   useEffect(() => {
@@ -50,13 +74,127 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [isCalendarOpen]);
 
-  const formatDisplayDate = (isoStr: string): string => {
+  const isoToSlashFormat = (isoStr: string): string => {
     if (!isoStr) return '';
-    const parts = isoStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    return isoStr.replace(/-/g, '/');
+  };
+
+  const parseDateInputToIso = (val: string): string | null => {
+    if (!val) return null;
+    const match = val.trim().match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+    if (!match) return null;
+    const y = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const d = parseInt(match[3], 10);
+    if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const daysInMonth = new Date(y, m, 0).getDate();
+    if (d > daysInMonth) return null;
+    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+    return `${y}-${pad(m)}-${pad(d)}`;
+  };
+
+  const formatAsDateInput = (value: string, prevValue: string): string => {
+    // If user is deleting/backspacing, allow it without adding characters
+    if (value.length < prevValue.length) {
+      return value;
     }
-    return isoStr;
+
+    // Replace dots or dashes with slashes
+    let cleaned = value.replace(/[.-]/g, '/');
+    // Keep only digits and slashes
+    cleaned = cleaned.replace(/[^\d/]/g, '');
+
+    if (cleaned.length > 10) {
+      cleaned = cleaned.slice(0, 10);
+    }
+
+    // Auto-insert slash after year (4 digits) if user hasn't typed one
+    if (/^\d{4}$/.test(cleaned)) {
+      cleaned = `${cleaned}/`;
+    }
+    // Auto-insert slash after month (YYYY/MM) if user hasn't typed one
+    else if (/^\d{4}\/\d{2}$/.test(cleaned)) {
+      cleaned = `${cleaned}/`;
+    }
+
+    return cleaned;
+  };
+
+  const stripPresetText = (val: string): string => {
+    return val
+      .replace(translations.cs.sinceBegan, '')
+      .replace(translations.en.sinceBegan, '')
+      .replace(translations.cs.untilNow, '')
+      .replace(translations.en.untilNow, '');
+  };
+
+  const handleInputChange = (field: 'from' | 'to', value: string) => {
+    if (isAllRange) {
+      setIsAllRange(false);
+      value = stripPresetText(value);
+    }
+    if (field === 'from') {
+      const formatted = formatAsDateInput(value, rawInputFrom);
+      setRawInputFrom(formatted);
+      if (formatted.trim() === '') {
+        setDateFrom('');
+      } else {
+        const iso = parseDateInputToIso(formatted);
+        if (iso) {
+          setDateFrom(iso);
+        }
+      }
+    } else {
+      const formatted = formatAsDateInput(value, rawInputTo);
+      setRawInputTo(formatted);
+      if (formatted.trim() === '') {
+        setDateTo('');
+      } else {
+        const iso = parseDateInputToIso(formatted);
+        if (iso) {
+          setDateTo(iso);
+        }
+      }
+    }
+  };
+
+  const handleBlur = (field: 'from' | 'to') => {
+    if (isAllRange) return;
+    if (field === 'from') {
+      if (rawInputFrom.trim() === '') {
+        setDateFrom('');
+        setRawInputFrom('');
+      } else {
+        const iso = parseDateInputToIso(rawInputFrom);
+        if (iso) {
+          setDateFrom(iso);
+          setRawInputFrom(isoToSlashFormat(iso));
+        } else {
+          setRawInputFrom(dateFrom ? isoToSlashFormat(dateFrom) : '');
+        }
+      }
+    } else {
+      if (rawInputTo.trim() === '') {
+        setDateTo('');
+        setRawInputTo('');
+      } else {
+        const iso = parseDateInputToIso(rawInputTo);
+        if (iso) {
+          setDateTo(iso);
+          setRawInputTo(isoToSlashFormat(iso));
+        } else {
+          setRawInputTo(dateTo ? isoToSlashFormat(dateTo) : '');
+        }
+      }
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'from' | 'to') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBlur(field);
+      (e.target as HTMLInputElement).blur();
+    }
   };
 
   const handleUsernameChange = (val: string) => {
@@ -77,14 +215,19 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     const currentYear = now.getFullYear();
 
     if (preset === 'year') {
+      setIsAllRange(false);
       setDateFrom(`${currentYear - 1}-01-01`);
       setDateTo(`${currentYear - 1}-12-31`);
     } else if (preset === 'summer') {
+      setIsAllRange(false);
       setDateFrom(`${currentYear}-06-01`);
       setDateTo(`${currentYear}-08-31`);
     } else if (preset === 'all') {
+      setIsAllRange(true);
       setDateFrom('');
       setDateTo('');
+      setRawInputFrom(t.sinceBegan);
+      setRawInputTo(t.untilNow);
     }
   };
 
@@ -109,7 +252,12 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       // Ignore local storage error
     }
 
-    if (dateFrom && dateTo && dateFrom > dateTo) {
+    const parsedFrom = !isAllRange && rawInputFrom.trim() ? parseDateInputToIso(rawInputFrom) : null;
+    const parsedTo = !isAllRange && rawInputTo.trim() ? parseDateInputToIso(rawInputTo) : null;
+    const resolvedFrom = parsedFrom || (isAllRange ? undefined : (dateFrom || undefined));
+    const resolvedTo = parsedTo || (isAllRange ? undefined : (dateTo || undefined));
+
+    if (resolvedFrom && resolvedTo && resolvedFrom > resolvedTo) {
       setErrorText(t.invalidDateRange);
       return;
     }
@@ -121,8 +269,8 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     try {
       const observations = await fetchObservations({
         username: cleanUsername,
-        d1: dateFrom || undefined,
-        d2: dateTo || undefined,
+        d1: resolvedFrom,
+        d2: resolvedTo,
         locale,
         maxObservations: 50000,
         onProgress: (loaded, total) => {
@@ -233,94 +381,92 @@ export const SearchForm: React.FC<SearchFormProps> = ({
           <div className="grid grid-cols-2 gap-3">
             {/* "From" window */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isCalendarOpen && activeField === 'from') {
-                    setIsCalendarOpen(false);
-                  } else {
-                    setActiveField('from');
-                    setIsCalendarOpen(true);
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0 pointer-events-none z-10" />
+              <input
+                type="text"
+                value={rawInputFrom}
+                onChange={(e) => handleInputChange('from', e.target.value)}
+                onFocus={(e) => {
+                  setActiveField('from');
+                  setIsCalendarOpen(true);
+                  if (isAllRange) {
+                    e.target.select();
                   }
                 }}
+                onClick={() => {
+                  setActiveField('from');
+                  setIsCalendarOpen(true);
+                }}
+                onBlur={() => handleBlur('from')}
+                onKeyDown={(e) => handleInputKeyDown(e, 'from')}
+                placeholder={t.dateFromPlaceholder}
                 disabled={isLoading}
-                className={`w-full flex items-center justify-between pl-10 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-left transition cursor-pointer ${
+                className={`w-full pl-10 pr-8 py-2.5 bg-slate-950 border rounded-xl text-xs font-medium tracking-wide text-white placeholder:text-slate-500 placeholder:opacity-50 placeholder:font-normal outline-none transition ${
                   isCalendarOpen && activeField === 'from'
-                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90 text-white'
-                    : 'border-slate-800 hover:border-slate-700 text-slate-200'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90'
+                    : 'border-slate-800 hover:border-slate-700'
                 }`}
-              >
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
-                <span className={dateFrom ? 'text-white font-medium tracking-wide' : 'text-slate-400 font-medium'}>
-                  {dateFrom ? formatDisplayDate(dateFrom) : t.sinceBegan}
-                </span>
-                {dateFrom && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDateFrom('');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        setDateFrom('');
-                      }
-                    }}
-                    className="p-0.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
-                    title={locale === 'cs' ? 'Vymazat počáteční datum' : 'Clear start date'}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </span>
-                )}
-              </button>
+              />
+              {(rawInputFrom || dateFrom || isAllRange) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAllRange(false);
+                    setDateFrom('');
+                    setRawInputFrom('');
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer z-10"
+                  title={locale === 'cs' ? 'Vymazat počáteční datum' : 'Clear start date'}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* "To" window */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isCalendarOpen && activeField === 'to') {
-                    setIsCalendarOpen(false);
-                  } else {
-                    setActiveField('to');
-                    setIsCalendarOpen(true);
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0 pointer-events-none z-10" />
+              <input
+                type="text"
+                value={rawInputTo}
+                onChange={(e) => handleInputChange('to', e.target.value)}
+                onFocus={(e) => {
+                  setActiveField('to');
+                  setIsCalendarOpen(true);
+                  if (isAllRange) {
+                    e.target.select();
                   }
                 }}
+                onClick={() => {
+                  setActiveField('to');
+                  setIsCalendarOpen(true);
+                }}
+                onBlur={() => handleBlur('to')}
+                onKeyDown={(e) => handleInputKeyDown(e, 'to')}
+                placeholder={t.dateToPlaceholder}
                 disabled={isLoading}
-                className={`w-full flex items-center justify-between pl-10 pr-3 py-2.5 bg-slate-950 border rounded-xl text-xs text-left transition cursor-pointer ${
+                className={`w-full pl-10 pr-8 py-2.5 bg-slate-950 border rounded-xl text-xs font-medium tracking-wide text-white placeholder:text-slate-500 placeholder:opacity-50 placeholder:font-normal outline-none transition ${
                   isCalendarOpen && activeField === 'to'
-                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90 text-white'
-                    : 'border-slate-800 hover:border-slate-700 text-slate-200'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-slate-900/90'
+                    : 'border-slate-800 hover:border-slate-700'
                 }`}
-              >
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
-                <span className={dateTo ? 'text-white font-medium tracking-wide' : 'text-slate-400 font-medium'}>
-                  {dateTo ? formatDisplayDate(dateTo) : t.untilNow}
-                </span>
-                {dateTo && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDateTo('');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        setDateTo('');
-                      }
-                    }}
-                    className="p-0.5 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
-                    title={locale === 'cs' ? 'Vymazat koncové datum' : 'Clear end date'}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </span>
-                )}
-              </button>
+              />
+              {(rawInputTo || dateTo || isAllRange) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAllRange(false);
+                    setDateTo('');
+                    setRawInputTo('');
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer z-10"
+                  title={locale === 'cs' ? 'Vymazat koncové datum' : 'Clear end date'}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -362,6 +508,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
           dateTo={dateTo}
           activeField={activeField}
           onSelectDate={(field, dateStr) => {
+            setIsAllRange(false);
             if (field === 'from') {
               setDateFrom(dateStr);
               if (dateTo && dateStr > dateTo) {
@@ -376,12 +523,16 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             }
           }}
           onSelectRange={(fromStr, toStr) => {
+            setIsAllRange(false);
             setDateFrom(fromStr);
             setDateTo(toStr);
           }}
           onClear={() => {
+            setIsAllRange(false);
             setDateFrom('');
             setDateTo('');
+            setRawInputFrom('');
+            setRawInputTo('');
           }}
           onClose={() => setIsCalendarOpen(false)}
           locale={locale}
