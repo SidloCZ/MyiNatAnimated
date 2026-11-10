@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Bug, MapPin } from 'lucide-react';
 import { InatObservation, HighlightItem } from './types/inat';
 import { TimelineData } from './types/timeline';
 import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
@@ -14,6 +15,7 @@ import { PrepareProgress } from './components/PrepareProgress';
 import { Player, MAP_STYLES } from './components/Player';
 import { AppLogo } from './components/AppLogo';
 import { Language, detectDefaultLanguage, translations } from './i18n/translations';
+import { getFeedbackIssueUrl } from './services/feedback';
 
 type AppStep = 'search' | 'highlights' | 'preparing' | 'player';
 
@@ -354,22 +356,64 @@ export function App() {
         )}
       </main>
 
-      {/* Footer – zobrazuje se pouze na úvodní vyhledávací obrazovce */}
+      {/* Footer – zobrazuje se na úvodní vyhledávací obrazovce */}
       {step === 'search' && (
-        <footer className="border-t border-slate-900 py-3 text-center text-[11px] text-slate-500 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-          <span>{t.footerText}</span>
-          <span className="hidden sm:inline">·</span>
-          <span>
-            Created by{' '}
-            <a
-              href="https://github.com/SidloCZ"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-emerald-400 hover:underline transition font-medium"
-            >
-              SidloCZ
-            </a>
-          </span>
+        <footer className="border-t border-slate-900/90 py-3 px-4 sm:px-6 text-[11px] text-slate-500">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
+            {/* Vlevo: Odkud jsou mapy */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>{t.mapDataBy}</span>
+              <a
+                href="https://openfreemap.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-emerald-400 hover:underline transition font-medium"
+              >
+                OpenFreeMap
+              </a>
+              <span className="text-slate-600">·</span>
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-emerald-400 hover:underline transition"
+              >
+                ©&nbsp;OpenStreetMap
+              </a>
+            </div>
+
+            {/* Uprostřed: Původ dat a autor */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center text-center">
+              <span>{t.footerText}</span>
+              <span className="hidden sm:inline text-slate-600">·</span>
+              <span>
+                Created by{' '}
+                <a
+                  href="https://github.com/SidloCZ"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-emerald-400 hover:underline transition font-medium"
+                >
+                  SidloCZ
+                </a>
+              </span>
+            </div>
+
+            {/* Vpravo: Nahlášení chyby nebo nápad na funkci s předvyplněným GitHub Issue */}
+            <div className="shrink-0">
+              <a
+                href={getFeedbackIssueUrl(language)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 hover:underline transition cursor-pointer font-medium"
+                title={language === 'cs' ? 'Nahlásit chybu nebo navrhnout novou funkci na GitHubu' : 'Report a bug or request a feature on GitHub'}
+              >
+                <Bug className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{t.foundBugOrFeature}</span>
+              </a>
+            </div>
+          </div>
         </footer>
       )}
     </div>

@@ -44,23 +44,23 @@ export type { MapStyleKey };
 
 export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | maplibregl.StyleSpecification }> = {
   dark: {
-    label: 'Tmavá (OpenFreeMap)',
+    label: 'Dark',
     style: 'https://tiles.openfreemap.org/styles/dark',
   },
   liberty: {
-    label: 'Barevná (OpenFreeMap)',
+    label: 'Liberty',
     style: 'https://tiles.openfreemap.org/styles/liberty',
   },
   positron: {
-    label: 'Světlá (OpenFreeMap)',
+    label: 'Positron',
     style: 'https://tiles.openfreemap.org/styles/positron',
   },
   bright: {
-    label: 'Jasná (OpenFreeMap)',
+    label: 'Bright',
     style: 'https://tiles.openfreemap.org/styles/bright',
   },
   osm: {
-    label: 'OpenStreetMap (OpenFreeMap)',
+    label: 'Liberty',
     style: 'https://tiles.openfreemap.org/styles/liberty',
   },
 };
