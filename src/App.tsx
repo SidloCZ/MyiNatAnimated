@@ -12,6 +12,7 @@ import { SearchForm } from './components/SearchForm';
 import { HighlightPicker } from './components/HighlightPicker';
 import { PrepareProgress } from './components/PrepareProgress';
 import { Player, MAP_STYLES } from './components/Player';
+import { AppLogo } from './components/AppLogo';
 import { Language, detectDefaultLanguage, translations } from './i18n/translations';
 
 type AppStep = 'search' | 'highlights' | 'preparing' | 'player';
@@ -238,13 +239,7 @@ export function App() {
             className="flex items-center gap-2.5 hover:opacity-85 transition cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1 -m-1"
             title={language === 'cs' ? 'Návrat na úvodní obrazovku' : 'Return to home screen'}
           >
-            <svg
-              className="w-6 h-6 text-emerald-400 shrink-0"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z" />
-            </svg>
+            <AppLogo className="w-6 h-6 sm:w-7 sm:h-7 shrink-0" />
             <span className="font-bold text-white tracking-tight text-sm sm:text-base">
               MyiNatAnimated
             </span>

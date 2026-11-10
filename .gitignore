@@ -29,6 +29,9 @@ lerna-debug.log*
 .turbo/
 .cache/
 
+# Testovací a exportní soubory
+test/
+
 # IDE a operační systémy
 .vscode/*
 !.vscode/extensions.json
