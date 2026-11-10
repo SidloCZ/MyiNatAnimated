@@ -251,7 +251,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
               >
                 <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
                 <span className={dateFrom ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
-                  {dateFrom ? formatDisplayDate(dateFrom) : (locale === 'cs' ? 'Od (kdykoliv)' : 'From (anytime)')}
+                  {dateFrom ? formatDisplayDate(dateFrom) : (locale === 'cs' ? 'Od' : 'From')}
                 </span>
                 {dateFrom && (
                   <span
@@ -297,7 +297,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
               >
                 <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
                 <span className={dateTo ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
-                  {dateTo ? formatDisplayDate(dateTo) : (locale === 'cs' ? 'Do (kdykoliv)' : 'To (anytime)')}
+                  {dateTo ? formatDisplayDate(dateTo) : (locale === 'cs' ? 'Do' : 'To')}
                 </span>
                 {dateTo && (
                   <span
@@ -323,9 +323,9 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             </div>
           </div>
 
-          {/* Date Picker window that opens directly below */}
+          {/* Date Picker floating overlay that opens directly below without stretching the card */}
           {isCalendarOpen && (
-            <div className="mt-2.5">
+            <div className="absolute top-full left-0 right-0 mt-2 z-50">
               <DateRangeCalendar
                 dateFrom={dateFrom}
                 dateTo={dateTo}

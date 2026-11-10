@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X, Check } from 'lucide-react';
 import { Language } from '../i18n/translations';
 
 interface DateRangeCalendarProps {
@@ -21,6 +21,16 @@ const CS_MONTHS = [
 const EN_MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const CS_MONTHS_SHORT = [
+  'Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čvn',
+  'Čvc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro',
+];
+
+const EN_MONTHS_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 const CS_WEEKDAYS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
@@ -50,8 +60,10 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
   onClose,
   locale = 'en',
 }) => {
-  // Determine initial month to display
-  // Prioritize active field's date, or fallback to the other field's date, or current date
+  // Navigation mode: 'days' | 'months' | 'years'
+  const [viewMode, setViewMode] = useState<'days' | 'months' | 'years'>('days');
+
+  // Initial month to display (from active field date, fallback to other field, or today)
   const [viewDate, setViewDate] = useState(() => {
     const targetDateStr = activeField === 'from'
       ? (dateFrom || dateTo)
@@ -63,6 +75,17 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
     }
     return new Date();
   });
+
+  const viewYear = viewDate.getFullYear();
+  const viewMonth = viewDate.getMonth();
+
+  // Decade base for year picker (12 years displayed)
+  const [yearDecadeBase, setYearDecadeBase] = useState(() => Math.floor(viewYear / 12) * 12);
+
+  // Sync year decade base when viewYear changes
+  useEffect(() => {
+    setYearDecadeBase(Math.floor(viewYear / 12) * 12);
+  }, [viewYear]);
 
   // When activeField changes or date is set, if viewDate is far off, sync it
   useEffect(() => {
@@ -103,18 +126,29 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, [isDragging, dragAnchor, dragHover, activeField, onSelectDate, onSelectRange]);
 
-  const viewYear = viewDate.getFullYear();
-  const viewMonth = viewDate.getMonth();
-
   const monthNames = locale === 'cs' ? CS_MONTHS : EN_MONTHS;
+  const shortMonthNames = locale === 'cs' ? CS_MONTHS_SHORT : EN_MONTHS_SHORT;
   const weekdays = locale === 'cs' ? CS_WEEKDAYS : EN_WEEKDAYS;
 
-  const handlePrevMonth = () => {
-    setViewDate(new Date(viewYear, viewMonth - 1, 1));
+  // Header navigation
+  const handlePrev = () => {
+    if (viewMode === 'years') {
+      setYearDecadeBase((b) => b - 12);
+    } else if (viewMode === 'months') {
+      setViewDate(new Date(viewYear - 1, viewMonth, 1));
+    } else {
+      setViewDate(new Date(viewYear, viewMonth - 1, 1));
+    }
   };
 
-  const handleNextMonth = () => {
-    setViewDate(new Date(viewYear, viewMonth + 1, 1));
+  const handleNext = () => {
+    if (viewMode === 'years') {
+      setYearDecadeBase((b) => b + 12);
+    } else if (viewMode === 'months') {
+      setViewDate(new Date(viewYear + 1, viewMonth, 1));
+    } else {
+      setViewDate(new Date(viewYear, viewMonth + 1, 1));
+    }
   };
 
   // Build grid of days (Monday-first)
@@ -127,13 +161,9 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
     }[] = [];
 
     const todayIso = new Date().toISOString().slice(0, 10);
-
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    // Day of week for 1st of month: 0=Sun, 1=Mon, ..., 6=Sat
-    // Convert to Monday=0, ..., Sunday=6
     const firstDayOfWeek = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
 
-    // Previous month filler days
     const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       const dayNum = prevMonthDays - i;
@@ -147,7 +177,6 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
       });
     }
 
-    // Current month days
     for (let d = 1; d <= daysInMonth; d++) {
       const iso = formatIso(viewYear, viewMonth, d);
       days.push({
@@ -158,7 +187,6 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
       });
     }
 
-    // Next month filler days to complete rows (up to multiple of 7)
     const remaining = (7 - (days.length % 7)) % 7;
     for (let d = 1; d <= remaining; d++) {
       const nextDate = new Date(viewYear, viewMonth + 1, d);
@@ -180,14 +208,12 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
       return {
         start: dragAnchor < dragHover ? dragAnchor : dragHover,
         end: dragAnchor < dragHover ? dragHover : dragAnchor,
-        isLiveDrag: true,
       };
     }
     if (dateFrom && dateTo) {
       return {
         start: dateFrom < dateTo ? dateFrom : dateTo,
         end: dateFrom < dateTo ? dateTo : dateFrom,
-        isLiveDrag: false,
       };
     }
     return null;
@@ -206,7 +232,6 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
   };
 
   const handleDayClick = (dateStr: string) => {
-    // If not a drag, simple single day selection
     if (!isDragging) {
       onSelectDate(activeField, dateStr);
     }
@@ -216,133 +241,220 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
     const today = new Date().toISOString().slice(0, 10);
     onSelectDate(activeField, today);
     setViewDate(new Date());
+    setViewMode('days');
   };
 
   return (
     <div
       ref={containerRef}
-      className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 select-none text-slate-100"
+      className="w-full max-w-[340px] sm:max-w-[360px] mx-auto bg-slate-900/98 border border-slate-700/90 rounded-2xl p-3 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 select-none text-slate-100 ring-1 ring-slate-800"
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Month & Year Navigation Header */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-4 h-4 text-emerald-400" />
-          <span className="font-bold text-sm text-white tracking-wide">
-            {monthNames[viewMonth]} {viewYear}
-          </span>
+      {/* Header with Navigation and View Toggles */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-1.5">
+          {/* Year selector button (Step 1: selects year -> switches to months) */}
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'years' ? 'days' : 'years')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'years'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'bg-slate-800 hover:bg-slate-700 text-white'
+            }`}
+            title={locale === 'cs' ? 'Vybrat rok' : 'Select year'}
+          >
+            <span>{viewMode === 'years' ? `${yearDecadeBase}–${yearDecadeBase + 11}` : viewYear}</span>
+            <ChevronDown className={`w-3 h-3 transition-transform ${viewMode === 'years' ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Month selector button (Step 2: selects month -> switches to days) */}
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'months' ? 'days' : 'months')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'months'
+                ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                : 'bg-slate-800 hover:bg-slate-700 text-white'
+            }`}
+            title={locale === 'cs' ? 'Vybrat měsíc' : 'Select month'}
+          >
+            <span>{monthNames[viewMonth]}</span>
+            <ChevronDown className={`w-3 h-3 transition-transform ${viewMode === 'months' ? 'rotate-180' : ''}`} />
+          </button>
         </div>
 
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={handlePrevMonth}
-            className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-            title={locale === 'cs' ? 'Předchozí měsíc' : 'Previous month'}
+            onClick={handlePrev}
+            className="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+            title={locale === 'cs' ? 'Předchozí' : 'Previous'}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            onClick={handleNextMonth}
-            className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-            title={locale === 'cs' ? 'Následující měsíc' : 'Next month'}
+            onClick={handleNext}
+            className="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+            title={locale === 'cs' ? 'Následující' : 'Next'}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Weekday columns */}
-      <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-        {weekdays.map((day, idx) => (
-          <div
-            key={day}
-            className={`text-[11px] font-semibold py-0.5 ${
-              idx >= 5 ? 'text-emerald-400/80' : 'text-slate-400'
-            }`}
-          >
-            {day}
+      {/* VIEW MODE 1: YEARS GRID */}
+      {viewMode === 'years' && (
+        <div className="py-1">
+          <div className="text-[11px] font-medium text-slate-400 mb-2 px-1">
+            {locale === 'cs' ? 'Krok 1: Vyberte rok' : 'Step 1: Select a year'}
           </div>
-        ))}
-      </div>
-
-      {/* Days grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {calendarDays.map(({ dateStr, dayNumber, isCurrentMonth, isToday }) => {
-          const isFrom = dateStr === dateFrom;
-          const isTo = dateStr === dateTo;
-          const isEndpoint = isFrom || isTo;
-
-          const inRange =
-            activeRange &&
-            dateStr >= activeRange.start &&
-            dateStr <= activeRange.end;
-
-          const isRangeStart = activeRange && dateStr === activeRange.start;
-          const isRangeEnd = activeRange && dateStr === activeRange.end;
-
-          let btnClass = 'text-slate-300 hover:bg-slate-800 hover:text-white';
-
-          if (!isCurrentMonth) {
-            btnClass = 'text-slate-600 hover:text-slate-400 hover:bg-slate-800/50';
-          }
-
-          if (isEndpoint) {
-            btnClass = 'bg-emerald-500 text-slate-950 font-bold shadow-md hover:bg-emerald-400';
-          } else if (inRange) {
-            btnClass = 'bg-emerald-500/20 text-emerald-200 font-medium hover:bg-emerald-500/30';
-          } else if (isToday) {
-            btnClass = 'border border-emerald-500/50 text-emerald-300 font-semibold hover:bg-slate-800';
-          }
-
-          return (
-            <div
-              key={dateStr}
-              className={`relative flex items-center justify-center ${
-                inRange && !isEndpoint ? 'bg-emerald-500/10' : ''
-              } ${isRangeStart ? 'rounded-l-lg' : ''} ${isRangeEnd ? 'rounded-r-lg' : ''}`}
-            >
-              <button
-                type="button"
-                onMouseDown={() => handleDayMouseDown(dateStr)}
-                onMouseEnter={() => handleDayMouseEnter(dateStr)}
-                onClick={() => handleDayClick(dateStr)}
-                className={`w-8 h-8 rounded-lg text-xs flex items-center justify-center transition-all cursor-pointer relative ${btnClass}`}
-              >
-                {dayNumber}
-                {isEndpoint && (
-                  <span className="sr-only">
-                    {isFrom ? (locale === 'cs' ? 'Od' : 'From') : (locale === 'cs' ? 'Do' : 'To')}
-                  </span>
-                )}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Hint and Quick Actions Footer */}
-      <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
-        <div className="text-[11px] text-slate-400">
-          {locale === 'cs' ? 'Kliknutím vyberete den, tažením rozsah.' : 'Click to pick day, drag for range.'}
+          <div className="grid grid-cols-4 gap-1.5">
+            {Array.from({ length: 12 }, (_, i) => yearDecadeBase + i).map((y) => {
+              const isSelected = y === viewYear;
+              return (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => {
+                    setViewDate(new Date(y, viewMonth, 1));
+                    // Workflow: after choosing year, choose month
+                    setViewMode('months');
+                  }}
+                  className={`py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                      : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200'
+                  }`}
+                >
+                  {y}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      )}
+
+      {/* VIEW MODE 2: MONTHS GRID */}
+      {viewMode === 'months' && (
+        <div className="py-1">
+          <div className="text-[11px] font-medium text-slate-400 mb-2 px-1">
+            {locale === 'cs' ? `Krok 2: Vyberte měsíc v roce ${viewYear}` : `Step 2: Select a month in ${viewYear}`}
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {monthNames.map((mName, mIdx) => {
+              const isSelected = mIdx === viewMonth;
+              return (
+                <button
+                  key={mName}
+                  type="button"
+                  onClick={() => {
+                    setViewDate(new Date(viewYear, mIdx, 1));
+                    // Workflow: after choosing month, choose day
+                    setViewMode('days');
+                  }}
+                  className={`py-2 px-1 rounded-lg text-xs font-semibold truncate transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                      : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200'
+                  }`}
+                  title={mName}
+                >
+                  {shortMonthNames[mIdx]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODE 3: DAYS GRID */}
+      {viewMode === 'days' && (
+        <>
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            {weekdays.map((day, idx) => (
+              <div
+                key={day}
+                className={`text-[10px] font-semibold py-0.5 ${
+                  idx >= 5 ? 'text-emerald-400/80' : 'text-slate-400'
+                }`}
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Days grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map(({ dateStr, dayNumber, isCurrentMonth, isToday }) => {
+              const isFrom = dateStr === dateFrom;
+              const isTo = dateStr === dateTo;
+              const isEndpoint = isFrom || isTo;
+
+              const inRange =
+                activeRange &&
+                dateStr >= activeRange.start &&
+                dateStr <= activeRange.end;
+
+              const isRangeStart = activeRange && dateStr === activeRange.start;
+              const isRangeEnd = activeRange && dateStr === activeRange.end;
+
+              let btnClass = 'text-slate-300 hover:bg-slate-800 hover:text-white';
+
+              if (!isCurrentMonth) {
+                btnClass = 'text-slate-600 hover:text-slate-400 hover:bg-slate-800/50';
+              }
+
+              if (isEndpoint) {
+                btnClass = 'bg-emerald-500 text-slate-950 font-bold shadow-md hover:bg-emerald-400';
+              } else if (inRange) {
+                btnClass = 'bg-emerald-500/20 text-emerald-200 font-medium hover:bg-emerald-500/30';
+              } else if (isToday) {
+                btnClass = 'border border-emerald-500/50 text-emerald-300 font-semibold hover:bg-slate-800';
+              }
+
+              return (
+                <div
+                  key={dateStr}
+                  className={`relative flex items-center justify-center ${
+                    inRange && !isEndpoint ? 'bg-emerald-500/10' : ''
+                  } ${isRangeStart ? 'rounded-l-md' : ''} ${isRangeEnd ? 'rounded-r-md' : ''}`}
+                >
+                  <button
+                    type="button"
+                    onMouseDown={() => handleDayMouseDown(dateStr)}
+                    onMouseEnter={() => handleDayMouseEnter(dateStr)}
+                    onClick={() => handleDayClick(dateStr)}
+                    className={`w-7 h-7 rounded-md text-[11px] flex items-center justify-center transition-all cursor-pointer relative ${btnClass}`}
+                  >
+                    {dayNumber}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Footer */}
+      <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+        <button
+          type="button"
+          onClick={setToday}
+          className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium transition cursor-pointer"
+        >
+          {locale === 'cs' ? 'Dnes' : 'Today'}
+        </button>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={setToday}
-            className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium transition cursor-pointer"
-          >
-            {locale === 'cs' ? 'Dnes' : 'Today'}
-          </button>
-
           {(dateFrom || dateTo) && (
             <button
               type="button"
               onClick={onClear}
-              className="px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-[11px] font-medium transition cursor-pointer flex items-center gap-1"
-              title={locale === 'cs' ? 'Vymazat vybrané datum' : 'Clear dates'}
+              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 text-[11px] font-medium transition cursor-pointer flex items-center gap-1"
+              title={locale === 'cs' ? 'Vymazat vybraná data' : 'Clear dates'}
             >
               <X className="w-3 h-3" />
               <span>{locale === 'cs' ? 'Smazat' : 'Clear'}</span>
@@ -352,7 +464,7 @@ export const DateRangeCalendar: React.FC<DateRangeCalendarProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
+            className="px-2.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
           >
             <Check className="w-3 h-3" />
             <span>{locale === 'cs' ? 'Hotovo' : 'Done'}</span>

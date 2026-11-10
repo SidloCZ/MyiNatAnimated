@@ -148,19 +148,32 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
   let bottomMargin = 50;
 
   if (options.isExport) {
+    let baseUiScale = 1.0;
+    let baseTopMargin = 24;
+    let baseBottomMargin = 40;
+
     if (options.aspectRatio === '9:16') {
-      uiScale = options.uiScale || 3.0; // 3x for vertical videos (Reels/TikTok)
-      topMargin = 110;                   // Keep distance from top status bar
-      bottomMargin = 200;                // Keep distance from bottom caption / action buttons
+      baseUiScale = 1.5;      // 2x smaller than previous 3.0
+      baseTopMargin = 60;     // Safe margin from top status bar
+      baseBottomMargin = 100; // Safe margin from bottom actions/captions
     } else if (options.aspectRatio === '1:1') {
-      uiScale = options.uiScale || 2.0; // 2x for square posts
-      topMargin = 44;
-      bottomMargin = 76;
+      baseUiScale = 1.0;      // 2x smaller than previous 2.0
+      baseTopMargin = 28;
+      baseBottomMargin = 44;
     } else {
-      uiScale = options.uiScale || 2.0; // 2x for standard 16:9 videos
-      topMargin = 36;
-      bottomMargin = 64;
+      // 16:9 standard video
+      baseUiScale = 1.0;      // 2x smaller than previous 2.0
+      baseTopMargin = 24;
+      baseBottomMargin = 40;
     }
+
+    // Adapt proportionally to resolution downscaling (e.g. GIF at 2.5x downscale or APNG at 2x downscale)
+    const baseExportWidth = (options.aspectRatio === '9:16' || options.aspectRatio === '1:1') ? 1080 : 1920;
+    const resScale = Math.min(1.0, width / baseExportWidth);
+
+    uiScale = (options.uiScale || baseUiScale) * resScale;
+    topMargin = Math.round(baseTopMargin * resScale);
+    bottomMargin = Math.round(baseBottomMargin * resScale);
   }
 
   const locale = options.locale || 'en';
@@ -210,11 +223,26 @@ function drawExportHud(
   padY = 24,
   locale: Language = 'en'
 ) {
-  const padX = 24 * (uiScale >= 2.5 ? 1.4 : 1.0);
+  const padX = Math.round(20 * uiScale);
   const formattedDate = formatLocalizedDate(dateStr, locale);
 
   ctx.save();
-  const hudW = Math.min(320 * uiScale, width - padX * 2);
+  const obsLabel = translations[locale].hudObsLabel;
+  const speciesLabel = translations[locale].hudSpeciesLabel;
+  const obsText = `${obsCount} / ${totalObs}`;
+  const speciesText = `${speciesCount}`;
+
+  ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const obsLabelWidth = ctx.measureText(obsLabel).width;
+  const speciesLabelWidth = ctx.measureText(speciesLabel).width;
+
+  ctx.font = `bold ${Math.round(12 * uiScale)}px monospace`;
+  const obsTextWidth = ctx.measureText(obsText).width;
+  const speciesCountWidth = ctx.measureText(speciesText).width;
+
+  // Calculate needed content width to ensure no labels ever truncate or clip
+  const contentWidth = 16 * uiScale + obsLabelWidth + 6 * uiScale + obsTextWidth + 14 * uiScale + speciesLabelWidth + 5 * uiScale + speciesCountWidth + 16 * uiScale;
+  const hudW = Math.min(Math.max(320 * uiScale, contentWidth), width - padX * 2);
   const hudH = 58 * uiScale;
 
   ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
@@ -233,27 +261,21 @@ function drawExportHud(
   // Live counters below
   ctx.fillStyle = '#94a3b8';
   ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  const obsLabel = translations[locale].hudObsLabel;
   ctx.fillText(obsLabel, padX + 16 * uiScale, padY + 45 * uiScale);
 
-  const obsLabelWidth = ctx.measureText(obsLabel).width;
   ctx.fillStyle = '#74ac00';
   ctx.font = `bold ${Math.round(12 * uiScale)}px monospace`;
-  const obsText = `${obsCount} / ${totalObs}`;
   ctx.fillText(obsText, padX + 16 * uiScale + obsLabelWidth + 6 * uiScale, padY + 45 * uiScale);
 
-  const obsTextWidth = ctx.measureText(obsText).width;
   const speciesX = padX + 16 * uiScale + obsLabelWidth + obsTextWidth + 14 * uiScale;
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  const speciesLabel = translations[locale].hudSpeciesLabel;
   ctx.fillText(speciesLabel, speciesX, padY + 45 * uiScale);
 
-  const speciesLabelWidth = ctx.measureText(speciesLabel).width;
   ctx.fillStyle = '#22d3ee';
   ctx.font = `bold ${Math.round(12 * uiScale)}px monospace`;
-  ctx.fillText(`${speciesCount}`, speciesX + speciesLabelWidth + 5 * uiScale, padY + 45 * uiScale);
+  ctx.fillText(speciesText, speciesX + speciesLabelWidth + 5 * uiScale, padY + 45 * uiScale);
 
   ctx.restore();
 }
@@ -282,7 +304,7 @@ function drawHighlightCard(
     opacity = 1 - p;
   }
 
-  const cardW = Math.min(370 * uiScale, width - 40);
+  const cardW = Math.min(370 * uiScale, width - 40 * uiScale);
   const cardH = 115 * uiScale;
   const cardX = (width - cardW) / 2;
   const cardY = height - cardH - bottomMargin + slideY;
