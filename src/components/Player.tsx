@@ -24,6 +24,7 @@ import { renderDopamineFrame } from '../engine/dopamineCanvas';
 import { getPlaybackStatsAtTime } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
+import { TimelineScrubber } from './TimelineScrubber';
 import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat } from '../types/export';
 import { exportToMp4 } from '../engine/videoExporter';
 import { exportToGif } from '../engine/gifExporter';
@@ -476,6 +477,26 @@ export const Player: React.FC<PlayerProps> = ({
       lastPlayedCueIndexRef.current = idx;
     },
     [timeline.cameraKeyframes, timeline.soundCues]
+  );
+
+  const wasPlayingBeforeScrubRef = useRef(false);
+  const handleScrubStateChange = useCallback(
+    (isScrubbing: boolean) => {
+      if (isScrubbing) {
+        wasPlayingBeforeScrubRef.current = isPlayingRef.current;
+        if (isPlayingRef.current) {
+          setIsPlaying(false);
+        }
+      } else {
+        if (wasPlayingBeforeScrubRef.current) {
+          wasPlayingBeforeScrubRef.current = false;
+          if (currentTimeRef.current < timeline.duration) {
+            setIsPlaying(true);
+          }
+        }
+      }
+    },
+    [timeline.duration]
   );
 
   const resumePlaybackWithFlyback = useCallback(() => {
@@ -1030,15 +1051,14 @@ export const Player: React.FC<PlayerProps> = ({
           <span className="text-xs tabular-nums text-slate-400 w-10 text-right">
             {currentTime.toFixed(1)}s
           </span>
-          <div className="relative flex-1 group py-1">
-            <input
-              type="range"
-              min={0}
-              max={timeline.duration}
-              step={0.05}
-              value={currentTime}
-              onChange={(e) => handleSeek(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 group-hover:h-2 transition-all outline-none"
+          <div className="relative flex-1">
+            <TimelineScrubber
+              currentTime={currentTime}
+              duration={timeline.duration}
+              onSeek={handleSeek}
+              onScrubStateChange={handleScrubStateChange}
+              onTogglePlay={handleTogglePlay}
+              disabled={isFlyingBack}
             />
           </div>
           <span className="text-xs tabular-nums text-slate-400 w-10">
