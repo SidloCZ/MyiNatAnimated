@@ -2,6 +2,8 @@ export type VideoAspectRatio = '16:9' | '9:16' | '1:1';
 
 export type ExportFormat = 'mp4' | 'gif' | 'apng';
 
+export type MapStyleKey = 'dark' | 'liberty' | 'positron' | 'bright' | 'osm';
+
 export interface ExportConfig {
   format: ExportFormat;
   aspectRatio: VideoAspectRatio;

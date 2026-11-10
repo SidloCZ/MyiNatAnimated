@@ -25,7 +25,7 @@ import { getPlaybackStatsAtTime } from '../engine/timelineBuilder';
 import { globalSoundEngine } from '../engine/soundEngine';
 import { ExportDialog } from './ExportDialog';
 import { TimelineScrubber } from './TimelineScrubber';
-import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat } from '../types/export';
+import { VideoAspectRatio, ExportProgress, ExportConfig, ExportFormat, MapStyleKey } from '../types/export';
 import { exportToMp4 } from '../engine/videoExporter';
 import { exportToGif } from '../engine/gifExporter';
 import { exportToApng } from '../engine/apngExporter';
@@ -40,7 +40,7 @@ interface PlayerProps {
   locale?: Language;
 }
 
-export type MapStyleKey = 'dark' | 'liberty' | 'positron' | 'bright' | 'osm';
+export type { MapStyleKey };
 
 export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | maplibregl.StyleSpecification }> = {
   dark: {
@@ -1151,6 +1151,8 @@ export const Player: React.FC<PlayerProps> = ({
         exportProgress={exportProgress}
         downloadUrl={downloadUrl}
         downloadFilename={downloadFilename}
+        selectedMapStyle={mapStyleKey}
+        onSelectMapStyle={handleStyleChange}
         locale={locale}
       />
     </div>

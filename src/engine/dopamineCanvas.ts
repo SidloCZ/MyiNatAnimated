@@ -148,23 +148,23 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
   let bottomMargin = 50;
 
   if (options.isExport) {
-    let baseUiScale = 1.0;
-    let baseTopMargin = 24;
-    let baseBottomMargin = 40;
+    let baseUiScale = 1.5;
+    let baseTopMargin = 36;
+    let baseBottomMargin = 50;
 
     if (options.aspectRatio === '9:16') {
-      baseUiScale = 1.5;      // 2x smaller than previous 3.0
-      baseTopMargin = 60;     // Safe margin from top status bar
-      baseBottomMargin = 100; // Safe margin from bottom actions/captions
+      baseUiScale = 2.25;     // 1.5x larger (scaled from 1.5)
+      baseTopMargin = 70;     // Safe margin from top status bar
+      baseBottomMargin = 110; // Safe margin from bottom actions/captions
     } else if (options.aspectRatio === '1:1') {
-      baseUiScale = 1.0;      // 2x smaller than previous 2.0
-      baseTopMargin = 28;
-      baseBottomMargin = 44;
+      baseUiScale = 1.5;      // 1.5x larger (scaled from 1.0)
+      baseTopMargin = 36;
+      baseBottomMargin = 50;
     } else {
       // 16:9 standard video
-      baseUiScale = 1.0;      // 2x smaller than previous 2.0
-      baseTopMargin = 24;
-      baseBottomMargin = 40;
+      baseUiScale = 1.5;      // 1.5x larger (scaled from 1.0)
+      baseTopMargin = 36;
+      baseBottomMargin = 50;
     }
 
     // Adapt proportionally to resolution downscaling (e.g. GIF at 2.5x downscale or APNG at 2x downscale)

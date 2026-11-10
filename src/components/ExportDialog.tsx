@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle, RotateCcw } from 'lucide-react';
-import { VideoAspectRatio, ExportProgress, ExportFormat } from '../types/export';
+import { X, Film, Image as ImageIcon, Sparkles, Download, Loader2, Check, AlertCircle, RotateCcw, Moon, Sun, Layers, Compass } from 'lucide-react';
+import { VideoAspectRatio, ExportProgress, ExportFormat, MapStyleKey } from '../types/export';
 import { Language, translations } from '../i18n/translations';
 
 interface ExportDialogProps {
@@ -11,6 +11,8 @@ interface ExportDialogProps {
   exportProgress: ExportProgress | null;
   downloadUrl: string | null;
   downloadFilename: string;
+  selectedMapStyle?: MapStyleKey;
+  onSelectMapStyle?: (style: MapStyleKey) => void;
   locale?: Language;
 }
 
@@ -22,6 +24,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   exportProgress,
   downloadUrl,
   downloadFilename,
+  selectedMapStyle = 'dark',
+  onSelectMapStyle,
   locale = 'en',
 }) => {
   const [format, setFormat] = useState<ExportFormat>('mp4');
@@ -30,6 +34,22 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const hasError = exportProgress !== null && exportProgress.phase === 'error';
 
   const t = translations[locale];
+
+  const mapThemes: { key: MapStyleKey; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { key: 'dark', label: t.themeDark, desc: t.themeDarkDesc, icon: Moon },
+    { key: 'liberty', label: t.themeLiberty, desc: t.themeLibertyDesc, icon: Layers },
+    { key: 'positron', label: t.themePositron, desc: t.themePositronDesc, icon: Sun },
+    { key: 'bright', label: t.themeBright, desc: t.themeBrightDesc, icon: Compass },
+  ];
+
+  const handleSelectMapStyle = (newStyle: MapStyleKey) => {
+    if (onSelectMapStyle) {
+      onSelectMapStyle(newStyle);
+    }
+    if (downloadUrl) {
+      onResetExport();
+    }
+  };
 
   const handleSelectFormat = (newFormat: ExportFormat) => {
     setFormat(newFormat);
@@ -65,6 +85,38 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         <p className="text-xs text-slate-400 mb-6">
           {t.exportDialogSubtitle}
         </p>
+
+        {/* Map theme selector */}
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            {t.mapThemeLabel}
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {mapThemes.map((theme) => {
+              const isSelected = selectedMapStyle === theme.key;
+              const Icon = theme.icon;
+              return (
+                <button
+                  key={theme.key}
+                  type="button"
+                  disabled={isExporting}
+                  onClick={() => handleSelectMapStyle(theme.key)}
+                  className={`flex flex-col gap-1 p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
+                      : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <span className="text-xs font-semibold text-white truncate">{theme.label}</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">{theme.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Format selector */}
         <div className="mb-5">
