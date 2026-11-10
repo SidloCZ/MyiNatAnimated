@@ -80,8 +80,8 @@ export const SearchForm: React.FC<SearchFormProps> = ({
       setDateFrom(`${currentYear - 1}-01-01`);
       setDateTo(`${currentYear - 1}-12-31`);
     } else if (preset === 'summer') {
-      setDateFrom(`${currentYear - 1}-06-01`);
-      setDateTo(`${currentYear - 1}-08-31`);
+      setDateFrom(`${currentYear}-06-01`);
+      setDateTo(`${currentYear}-08-31`);
     } else if (preset === 'all') {
       setDateFrom('');
       setDateTo('');
@@ -124,7 +124,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
         d1: dateFrom || undefined,
         d2: dateTo || undefined,
         locale,
-        maxObservations: 2500,
+        maxObservations: 50000,
         onProgress: (loaded, total) => {
           setProgressText(
             locale === 'cs'
@@ -251,8 +251,8 @@ export const SearchForm: React.FC<SearchFormProps> = ({
                 }`}
               >
                 <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
-                <span className={dateFrom ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
-                  {dateFrom ? formatDisplayDate(dateFrom) : (locale === 'cs' ? 'Od' : 'From')}
+                <span className={dateFrom ? 'text-white font-medium tracking-wide' : 'text-slate-400 font-medium'}>
+                  {dateFrom ? formatDisplayDate(dateFrom) : t.sinceBegan}
                 </span>
                 {dateFrom && (
                   <span
@@ -297,8 +297,8 @@ export const SearchForm: React.FC<SearchFormProps> = ({
                 }`}
               >
                 <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 shrink-0" />
-                <span className={dateTo ? 'text-white font-medium tracking-wide' : 'text-slate-500'}>
-                  {dateTo ? formatDisplayDate(dateTo) : (locale === 'cs' ? 'Do' : 'To')}
+                <span className={dateTo ? 'text-white font-medium tracking-wide' : 'text-slate-400 font-medium'}>
+                  {dateTo ? formatDisplayDate(dateTo) : t.untilNow}
                 </span>
                 {dateTo && (
                   <span

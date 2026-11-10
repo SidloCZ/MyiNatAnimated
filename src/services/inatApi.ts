@@ -109,7 +109,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
     username,
     d1,
     d2,
-    maxObservations = 5000,
+    maxObservations = 50000,
     useCache = true,
     locale = 'en',
     onProgress,
