@@ -64,6 +64,26 @@ export const MAP_STYLES: Record<MapStyleKey, { label: string; style: string | ma
   },
 };
 
+const enableMapInteractions = (m: maplibregl.Map | null) => {
+  if (!m) return;
+  m.dragPan?.enable();
+  m.scrollZoom?.enable();
+  m.touchZoomRotate?.enable();
+  m.doubleClickZoom?.enable();
+  m.dragRotate?.enable();
+};
+
+const disableMapInteractions = (m: maplibregl.Map | null) => {
+  if (!m) return;
+  m.dragPan?.disable();
+  m.scrollZoom?.disable();
+  m.touchZoomRotate?.disable();
+  m.doubleClickZoom?.disable();
+  m.dragRotate?.disable();
+  m.boxZoom?.disable();
+  m.keyboard?.disable();
+};
+
 export const Player: React.FC<PlayerProps> = ({
   timeline,
   sprites,
@@ -132,6 +152,16 @@ export const Player: React.FC<PlayerProps> = ({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState('');
 
+  // Free map exploration state during pause
+  const [isUserExploring, setIsUserExploring] = useState(false);
+  const isUserExploringRef = useRef(false);
+  isUserExploringRef.current = isUserExploring;
+
+  // Smooth camera flyback state before continuing playback
+  const [isFlyingBack, setIsFlyingBack] = useState(false);
+  const isFlyingBackRef = useRef(false);
+  isFlyingBackRef.current = isFlyingBack;
+
   const animFrameIdRef = useRef<number | null>(null);
   const lastWallTimeRef = useRef<number | null>(null);
   const centerPlayRef = useRef<HTMLDivElement | null>(null);
@@ -153,8 +183,11 @@ export const Player: React.FC<PlayerProps> = ({
     setIsBuffering(false);
     setIsMapReady(true);
     setIsPlaying(false);
+    setIsUserExploring(false);
+    isUserExploringRef.current = false;
     const map = mapRef.current;
     if (map) {
+      enableMapInteractions(map);
       const initialKeyframe = timeline.cameraKeyframes[0];
       if (initialKeyframe) {
         map.jumpTo({
@@ -176,8 +209,12 @@ export const Player: React.FC<PlayerProps> = ({
 
     const seq = ++styleChangeSeqRef.current;
 
-    // Pause playback on style switch
+    // Pause playback on style switch and reset free exploration
     setIsPlaying(false);
+    setIsUserExploring(false);
+    isUserExploringRef.current = false;
+    setIsFlyingBack(false);
+    isFlyingBackRef.current = false;
 
     // Cancel any existing buffering and activate buffering state with progress
     cancelBufferingRef.current = false;
@@ -222,7 +259,20 @@ export const Player: React.FC<PlayerProps> = ({
     setIsBuffering(false);
     setIsMapReady(true);
     setIsPlaying(false);
+    enableMapInteractions(map);
   };
+
+  // Sync map interaction handlers based on playback state
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapReady) return;
+
+    if (isPlaying || isFlyingBack || isBuffering) {
+      disableMapInteractions(map);
+    } else {
+      enableMapInteractions(map);
+    }
+  }, [isPlaying, isFlyingBack, isBuffering, isMapReady]);
 
   // Initialize MapLibre
   useEffect(() => {
@@ -242,18 +292,39 @@ export const Player: React.FC<PlayerProps> = ({
       zoom: initialKeyframe.zoom,
       pitch: initialKeyframe.pitch,
       bearing: initialKeyframe.bearing,
-      interactive: false, // Directed camera controls movement
+      interactive: true,
       attributionControl: false,
       maxTileCacheSize: 3000,
       renderWorldCopies: false,
       preserveDrawingBuffer: true,
     });
 
+    disableMapInteractions(map);
+
+    // Detect user-initiated map movements (click & drag, zoom, rotate) during pause
+    const handleUserMove = (e: maplibregl.MapLibreEvent) => {
+      if (!isPlayingRef.current && isMapReadyRef.current && !isFlyingBackRef.current) {
+        if ((e as { originalEvent?: unknown }).originalEvent) {
+          if (!isUserExploringRef.current) {
+            isUserExploringRef.current = true;
+            setIsUserExploring(true);
+          }
+        }
+      }
+    };
+
+    map.on('movestart', handleUserMove);
+    map.on('zoomstart', handleUserMove);
+    map.on('rotatestart', handleUserMove);
+    map.on('pitchstart', handleUserMove);
+
     cancelBufferingRef.current = false;
     setIsBuffering(true);
     setBufferProgress(0);
     setIsMapReady(false);
     setIsPlaying(false);
+    setIsUserExploring(false);
+    isUserExploringRef.current = false;
 
     map.once('load', async () => {
       // Warm up map tiles along the flight trajectory directly on this map instance
@@ -268,6 +339,7 @@ export const Player: React.FC<PlayerProps> = ({
         setIsBuffering(false);
         setIsMapReady(true);
         setIsPlaying(false);
+        enableMapInteractions(map);
       }
     });
 
@@ -331,13 +403,15 @@ export const Player: React.FC<PlayerProps> = ({
       const map = mapRef.current;
       const canvas = canvasRef.current;
       if (map && canvas) {
-        const cam = interpolateCamera(timeline.cameraKeyframes, currentTimeRef.current);
-        map.jumpTo({
-          center: cam.center,
-          zoom: cam.zoom,
-          pitch: cam.pitch,
-          bearing: cam.bearing,
-        });
+        if (isPlayingRef.current) {
+          const cam = interpolateCamera(timeline.cameraKeyframes, currentTimeRef.current);
+          map.jumpTo({
+            center: cam.center,
+            zoom: cam.zoom,
+            pitch: cam.pitch,
+            bearing: cam.bearing,
+          });
+        }
 
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -359,6 +433,7 @@ export const Player: React.FC<PlayerProps> = ({
               return { x: p.x, y: p.y };
             },
             sprites,
+            hideHighlightCard: isUserExploringRef.current || isFlyingBackRef.current,
           });
 
           ctx.restore();
@@ -374,25 +449,98 @@ export const Player: React.FC<PlayerProps> = ({
     };
   }, [timeline, sprites]);
 
+  const handleSeek = useCallback(
+    (newTime: number) => {
+      if (isFlyingBackRef.current) return;
+      setIsUserExploring(false);
+      isUserExploringRef.current = false;
+      currentTimeRef.current = newTime;
+      setCurrentTime(newTime);
+
+      const map = mapRef.current;
+      if (map) {
+        const cam = interpolateCamera(timeline.cameraKeyframes, newTime);
+        map.jumpTo({
+          center: cam.center,
+          zoom: cam.zoom,
+          pitch: cam.pitch,
+          bearing: cam.bearing,
+        });
+      }
+
+      // Reset sound cue index to new time
+      let idx = -1;
+      while (idx + 1 < timeline.soundCues.length && timeline.soundCues[idx + 1].t <= newTime) {
+        idx++;
+      }
+      lastPlayedCueIndexRef.current = idx;
+    },
+    [timeline.cameraKeyframes, timeline.soundCues]
+  );
+
+  const resumePlaybackWithFlyback = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) {
+      setIsUserExploring(false);
+      isUserExploringRef.current = false;
+      setIsPlaying(true);
+      return;
+    }
+
+    setIsFlyingBack(true);
+    isFlyingBackRef.current = true;
+    disableMapInteractions(map);
+
+    const targetCam = interpolateCamera(timeline.cameraKeyframes, currentTimeRef.current);
+
+    let finished = false;
+    const onArrival = () => {
+      if (finished) return;
+      finished = true;
+      map.off('moveend', onArrival);
+      setIsFlyingBack(false);
+      isFlyingBackRef.current = false;
+      setIsUserExploring(false);
+      isUserExploringRef.current = false;
+      setIsPlaying(true);
+    };
+
+    map.on('moveend', onArrival);
+
+    setTimeout(() => {
+      if (!finished) onArrival();
+    }, 2000);
+
+    map.flyTo({
+      center: targetCam.center,
+      zoom: targetCam.zoom,
+      pitch: targetCam.pitch,
+      bearing: targetCam.bearing,
+      duration: 1200,
+      essential: true,
+    });
+  }, [timeline.cameraKeyframes]);
+
   // Playback controls
-  const handleTogglePlay = () => {
-    if (currentTime >= timeline.duration) {
+  const handleTogglePlay = useCallback(() => {
+    if (isFlyingBackRef.current || isBuffering || !isMapReady) return;
+
+    if (currentTimeRef.current >= timeline.duration) {
       handleSeek(0);
+      setIsPlaying(true);
+      return;
     }
-    setIsPlaying(!isPlaying);
-  };
 
-  const handleSeek = (newTime: number) => {
-    currentTimeRef.current = newTime;
-    setCurrentTime(newTime);
-
-    // Reset sound cue index to new time
-    let idx = -1;
-    while (idx + 1 < timeline.soundCues.length && timeline.soundCues[idx + 1].t <= newTime) {
-      idx++;
+    if (!isPlaying) {
+      if (isUserExploringRef.current) {
+        resumePlaybackWithFlyback();
+      } else {
+        setIsPlaying(true);
+      }
+    } else {
+      setIsPlaying(false);
     }
-    lastPlayedCueIndexRef.current = idx;
-  };
+  }, [timeline.duration, isPlaying, isBuffering, isMapReady, handleSeek, resumePlaybackWithFlyback]);
 
   const handleToggleMute = () => {
     const nextMuted = !isMuted;
@@ -617,11 +765,11 @@ export const Player: React.FC<PlayerProps> = ({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  });
+  }, [handleTogglePlay, isExportOpen]);
 
   // Playful magnetic dodge of the big center play button (a few pixels away from the cursor)
   useEffect(() => {
-    if (isBuffering || !isMapReady || isPlaying) return;
+    if (isBuffering || !isMapReady || isPlaying || isUserExploring || isFlyingBack) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (window.matchMedia('(hover: none)').matches) return;
 
@@ -695,7 +843,7 @@ export const Player: React.FC<PlayerProps> = ({
       if (rafId) cancelAnimationFrame(rafId);
       if (centerPlayRef.current) centerPlayRef.current.style.transform = '';
     };
-  }, [isBuffering, isMapReady, isPlaying]);
+  }, [isBuffering, isMapReady, isPlaying, isUserExploring, isFlyingBack]);
 
   return (
     <div className="relative w-full h-[85vh] sm:h-[88vh] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950 flex flex-col select-none">
@@ -748,8 +896,8 @@ export const Player: React.FC<PlayerProps> = ({
           </div>
         )}
 
-        {/* Big Center Play Button (zobrazí se po načtení mapových podkladů při pozastaveném přehrávání) */}
-        {!isBuffering && isMapReady && !isPlaying && (
+        {/* Big Center Play Button (zobrazí se po načtení mapových podkladů při pozastaveném přehrávání, pokud uživatel mapou nepohybuje) */}
+        {!isBuffering && isMapReady && !isPlaying && !isUserExploring && !isFlyingBack && (
           <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-95 duration-200">
             <div ref={centerPlayRef} className="will-change-transform">
               <button
@@ -904,10 +1052,15 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={handleTogglePlay}
-              className="w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center transition shadow-md cursor-pointer"
+              disabled={isFlyingBack}
+              className={`w-9 h-9 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center transition shadow-md cursor-pointer ${
+                isFlyingBack ? 'opacity-80 cursor-wait' : ''
+              }`}
               title={isPlaying ? t.pauseTooltip : t.playTooltip}
             >
-              {isPlaying ? (
+              {isFlyingBack ? (
+                <div className="w-4 h-4 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" />
+              ) : isPlaying ? (
                 <Pause className="w-4 h-4 fill-slate-950" />
               ) : (
                 <Play className="w-4 h-4 fill-slate-950 ml-0.5" />

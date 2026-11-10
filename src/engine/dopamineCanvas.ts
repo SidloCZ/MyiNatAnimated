@@ -15,6 +15,7 @@ export interface DopamineRenderOptions {
   aspectRatio?: '16:9' | '9:16' | '1:1';
   uiScale?: number;
   locale?: Language;
+  hideHighlightCard?: boolean;
 }
 
 export function renderDopamineFrame(options: DopamineRenderOptions) {
@@ -165,7 +166,7 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
   const locale = options.locale || 'en';
 
   // 6. Highlight card popup overlay
-  if (activeHighlight) {
+  if (activeHighlight && !options.hideHighlightCard) {
     drawHighlightCard(
       ctx,
       width,
