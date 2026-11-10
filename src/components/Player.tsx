@@ -67,7 +67,7 @@ export const Player: React.FC<PlayerProps> = ({
   sprites,
   username,
   onBack,
-  locale = 'cs',
+  locale = 'en',
 }) => {
   const t = translations[locale];
   const currentExportAspectRatioRef = useRef<VideoAspectRatio>('16:9');
@@ -480,7 +480,7 @@ export const Player: React.FC<PlayerProps> = ({
     }
     setDownloadUrl(null);
 
-    logToTerminal('info', `Spuštěn export: ${format.toUpperCase()} (${aspectRatio})`);
+    logToTerminal('info', `Export started: ${format.toUpperCase()} (${aspectRatio})`);
 
     let width = 1920;
     let height = 1080;
@@ -559,10 +559,10 @@ export const Player: React.FC<PlayerProps> = ({
         percentage: 100,
         phase: 'completed',
       });
-      logToTerminal('info', `Export dokončen: ${filename} (velikost: ${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
+      logToTerminal('info', `Export finished: ${filename} (size: ${(blob.size / (1024 * 1024)).toFixed(2)} MB)`);
     } catch (err: unknown) {
       console.error('Chyba exportu:', err);
-      logToTerminal('error', `Chyba při exportu: ${err instanceof Error ? err.message : String(err)}`, err);
+      logToTerminal('error', `Export failed: ${err instanceof Error ? err.message : String(err)}`, err);
       setExportProgress({
         currentFrame: 0,
         totalFrames: 0,
@@ -678,18 +678,18 @@ export const Player: React.FC<PlayerProps> = ({
           )}
 
           <div className="flex items-center gap-2 pointer-events-auto">
-            <div className="relative flex items-center">
-              <MapIcon className="absolute left-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md text-xs font-semibold text-slate-300 hover:border-slate-700 transition">
+              <MapIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <select
                 value={mapStyleKey}
                 onChange={(e) => handleStyleChange(e.target.value as MapStyleKey)}
-                className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 border border-slate-800 backdrop-blur-md text-xs font-semibold outline-none cursor-pointer appearance-none transition"
+                className="bg-transparent text-slate-300 hover:text-white outline-none cursor-pointer text-xs font-semibold pr-1"
                 title={t.mapStyleTitle}
               >
-                <option value="dark">{t.styleDark}</option>
-                <option value="liberty">{t.styleLiberty}</option>
-                <option value="positron">{t.stylePositron}</option>
-                <option value="bright">{t.styleBright}</option>
+                <option value="dark" className="bg-slate-900 text-slate-200">{t.styleDark}</option>
+                <option value="liberty" className="bg-slate-900 text-slate-200">{t.styleLiberty}</option>
+                <option value="positron" className="bg-slate-900 text-slate-200">{t.stylePositron}</option>
+                <option value="bright" className="bg-slate-900 text-slate-200">{t.styleBright}</option>
               </select>
             </div>
 

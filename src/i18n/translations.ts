@@ -1,18 +1,21 @@
 export type Language = 'cs' | 'en';
 
+/**
+ * Returns the language for the first render.
+ * - A language chosen by the user (stored in localStorage) always wins.
+ * - Otherwise English is the default, regardless of browser locale.
+ * Localization runs entirely client-side, so it works on GitHub Pages as well.
+ */
 export function detectDefaultLanguage(): Language {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('myinat_language');
-    if (saved === 'cs' || saved === 'en') return saved;
-    if (typeof navigator !== 'undefined') {
-      const navLang = navigator.language.toLowerCase();
-      if (navLang.startsWith('cs') || navLang.startsWith('sk')) {
-        return 'cs';
-      }
-      return 'en';
+    try {
+      const saved = localStorage.getItem('myinat_language');
+      if (saved === 'cs' || saved === 'en') return saved;
+    } catch {
+      // Ignore unavailable localStorage (private mode, blocked storage)
     }
   }
-  return 'cs';
+  return 'en';
 }
 
 export const translations = {
@@ -45,6 +48,14 @@ export const translations = {
     preparePhotoSprites: 'Přednačítání fotografií vybraných highlightů…',
     prepareMapTiles: 'Přednačítání mapových podkladů podél trasy animace…',
     prepareDone: 'Příprava dokončena.',
+    prepareProgressTitle: 'Příprava animace',
+    prepareProgressFallback: 'Předpočítávání dráhy kamery, zvuků a vektorových efektů…',
+    progressLabel: 'Průběh',
+
+    // API errors
+    apiRateLimit: 'Překročen limit požadavků iNaturalist API (429). Zkuste to prosím za chvíli.',
+    apiRequestFailed: 'Chyba iNaturalist API',
+    apiLoadCancelled: 'Načítání bylo zrušeno.',
 
     // HighlightPicker
     highlightTitle: 'Výběr významných pozorování (Highlightů)',
@@ -62,6 +73,7 @@ export const translations = {
     identificationsTooltip: 'Potvrzení určení',
     favesTooltip: 'Oblíbení',
     commentsTooltip: 'Komentáře',
+    scorePointsShort: 'b.',
 
     // Player
     backBtn: 'Zpět',
@@ -147,6 +159,14 @@ export const translations = {
     preparePhotoSprites: 'Preloading photos of selected highlights…',
     prepareMapTiles: 'Preloading map tiles along animation trajectory…',
     prepareDone: 'Preparation complete.',
+    prepareProgressTitle: 'Preparing animation',
+    prepareProgressFallback: 'Pre-calculating camera path, sounds and vector effects…',
+    progressLabel: 'Progress',
+
+    // API errors
+    apiRateLimit: 'iNaturalist API rate limit exceeded (429). Please try again in a moment.',
+    apiRequestFailed: 'iNaturalist API error',
+    apiLoadCancelled: 'Loading was cancelled.',
 
     // HighlightPicker
     highlightTitle: 'Select featured observations (Highlights)',
@@ -164,6 +184,7 @@ export const translations = {
     identificationsTooltip: 'Identifications',
     favesTooltip: 'Favorites',
     commentsTooltip: 'Comments',
+    scorePointsShort: 'pts',
 
     // Player
     backBtn: 'Back',
@@ -232,7 +253,7 @@ const EN_MONTHS = [
  * - 'cs': 15. 5. 2024
  * - 'en': 15 May 2024
  */
-export function formatLocalizedDate(dateStr?: string, locale: Language = 'cs'): string {
+export function formatLocalizedDate(dateStr?: string, locale: Language = 'en'): string {
   if (!dateStr) return '';
 
   const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);

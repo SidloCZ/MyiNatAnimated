@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Sparkles, Calendar, User, AlertCircle } from 'lucide-react';
-import { DEMO_USER, DEMO_OBSERVATIONS } from '../services/demoData';
+import { DEMO_USER, getDemoObservations } from '../services/demoData';
 import { InatObservation } from '../types/inat';
 import { fetchObservations } from '../services/inatApi';
 import { Language, translations } from '../i18n/translations';
@@ -12,19 +12,40 @@ interface SearchFormProps {
   locale?: Language;
 }
 
+const STORAGE_KEY_USERNAME = 'myinat_last_username';
+
 export const SearchForm: React.FC<SearchFormProps> = ({
   onDataLoaded,
   isLoading,
   setIsLoading,
-  locale = 'cs',
+  locale = 'en',
 }) => {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_USERNAME) || '';
+    } catch (_) {
+      return '';
+    }
+  });
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [progressText, setProgressText] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const t = translations[locale];
+
+  const handleUsernameChange = (val: string) => {
+    setUsername(val);
+    try {
+      if (val.trim()) {
+        localStorage.setItem(STORAGE_KEY_USERNAME, val.trim());
+      } else {
+        localStorage.removeItem(STORAGE_KEY_USERNAME);
+      }
+    } catch (_) {
+      // Ignore local storage error
+    }
+  };
 
   const handlePreset = (preset: 'year' | 'summer' | 'all') => {
     const now = new Date();
@@ -45,7 +66,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   const handleDemoClick = () => {
     setUsername(DEMO_USER);
     setErrorText(null);
-    onDataLoaded(DEMO_OBSERVATIONS, DEMO_USER);
+    onDataLoaded(getDemoObservations(locale), DEMO_USER);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,6 +75,12 @@ export const SearchForm: React.FC<SearchFormProps> = ({
     if (!cleanUsername) {
       setErrorText(locale === 'cs' ? 'Zadejte prosím uživatelské jméno na iNaturalistu.' : 'Please enter an iNaturalist username.');
       return;
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEY_USERNAME, cleanUsername);
+    } catch (_) {
+      // Ignore local storage error
     }
 
     if (dateFrom && dateTo && dateFrom > dateTo) {
@@ -128,7 +155,7 @@ export const SearchForm: React.FC<SearchFormProps> = ({
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => handleUsernameChange(e.target.value)}
               placeholder={t.usernamePlaceholder}
               disabled={isLoading}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl text-white placeholder-slate-500 text-sm outline-none transition"

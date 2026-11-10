@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { InatObservation, HighlightItem } from './types/inat';
 import { TimelineData } from './types/timeline';
 import { PreloadedSprites, preloadSprites } from './engine/spriteAtlas';
@@ -28,6 +28,11 @@ export function App() {
       // Ignore local storage error
     }
   };
+
+  // Keep the document language in sync with the UI language
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const [step, setStep] = useState<AppStep>('search');
   const [username, setUsername] = useState('');
@@ -227,9 +232,14 @@ export function App() {
       {/* Navigation Top Bar */}
       <header className="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setStep('search')}
+            className="flex items-center gap-2.5 hover:opacity-85 transition cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1 -m-1"
+            title={language === 'cs' ? 'Návrat na úvodní obrazovku' : 'Return to home screen'}
+          >
             <svg
-              className="w-6 h-6 text-emerald-400"
+              className="w-6 h-6 text-emerald-400 shrink-0"
               viewBox="0 0 24 24"
               fill="currentColor"
             >
@@ -238,7 +248,7 @@ export function App() {
             <span className="font-bold text-white tracking-tight text-sm sm:text-base">
               MyiNatAnimated
             </span>
-          </div>
+          </button>
 
           <div className="flex items-center gap-4">
             <div className="text-xs text-slate-400 hidden sm:block">
@@ -312,6 +322,7 @@ export function App() {
           <PrepareProgress
             statusText={prepareStatus}
             progressPercent={preparePercent}
+            locale={language}
           />
         )}
 

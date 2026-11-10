@@ -34,6 +34,8 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
 - **Deployment pravidla:**
   - Výstupem buildu je statický balíček ve složce `dist/` připravený pro GitHub Pages i Netlify.
   - Relativní cesty v konfiguraci Vite (`base: './'`) pro bezproblémové fungování na podadresářích GitHub Pages.
+- **Přístup k souborům:**
+  - Před pokusem o přístup mimo složku tohoto workspace se vždy zeptej. Je nutné zamezit nepovoleným přístupům na jiné disky, k souborům mimo tento workspace.
 
 ---
 
@@ -46,7 +48,28 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
   - Vyvaruj se překombinovaných návrhů a zbytečného kódu navíc.
 - **Audit a transparentnost nepožádaných změn kódu:**
   - Pokud v kódu provedeš jakoukoliv změnu, refaktoring nebo optimalizaci, **o kterou uživatel v zadání výslovně nežádal**, VŽDY tuto změnu v odpovědi zřetelně zdůrazni a vysvětli její důvod.
-  - Nápady a návrhy nad rámec původního zadání neimplementuj svévolně – popiš je v chatu jako dotaz či doporučení.
+  - Nápady a návrhy nad rámec původního zadání neimplementuj svévolně do kódu – popiš je v chatu jako dotaz či doporučení.
+- **Aktivní dotazování při plánování a změnách (`ask_question`):**
+  - Při plánování dalšího postupu nebo pokud má být provedena jakákoliv změna, která nebyla agentovi specificky a výslovně zadána, se agent **frekventovaně ptá uživatele pomocí nástroje `ask_question`**.
+  - Nevytvářej domněnky a před zahájením implementace si vždy ujasni varianty a priority.
+- **Automatické ukládání postřehů a návrhů (SUGGESTIONS.md):**
+  - **Zásada nezdržování:** Asistent aktivně a cíleně nevyhledává vedlejší problémy a neodvádí pozornost od zadaného úkolu. Zaznamenává výhradně postřehy, na které přirozeně narazí během řešení (např. technický dluh, skrytý bug, neoptimální kód, bezpečnostní riziko, chybějící typování), a které by jinak pouze napsal do chatu, kde hrozí jejich zapadnutí.
+  - **Umístění a inicializace:** Návrhy ukládej do souboru `SUGGESTIONS.md` v kořenovém adresáři projektu. Pokud soubor ještě neexistuje, asistent jej vytvoří s logickým rozdělením do kategorií.
+  - **Prevence duplicit:** Před zápisem vždy nejprve zkontroluj existující obsah `SUGGESTIONS.md`. Pokud obdobný záznam již existuje, duplicitu nevytvářej (případně pouze doplň nový kontext či odkaz na další soubor).
+  - **Formát zápisu:** Každý záznam vlož jako odškrtávací položku checklistu do odpovídající kategorie:
+    ```markdown
+    - [ ] **[Výstižný název problému či námětu]**
+      - **Kde:** `cesta/k/souboru` (včetně řádku či symbolu)
+      - **Kontext:** Stručný popis zjištěného stavu nebo rizika (1–2 věty).
+      - **Návrh řešení:** Konkrétní doporučený postup nápravy.
+    ```
+  - **Doporučené kategorie:**
+    - `## Architektura a kód`
+    - `## UI, UX a frontend`
+    - `## Bugy a potenciální rizika`
+    - `## Výkon a optimalizace`
+    - `## Dokumentace a procesy`
+  - **Chování v chatu:** Nezahlcuj chat rozsáhlými rozbory vedlejších nápadů. Do odpovědi vlož pouze stručnou jednovětou notifikaci s odkazem na soubor, např. *„Při úpravách jsem zaznamenal prostor pro refaktoring – detailní návrh jsem zapsal do [SUGGESTIONS.md](SUGGESTIONS.md).*“
 - **Striktní zákaz emoji:**
   - V celém projektu (uživatelské rozhraní, dialogy, toast zprávy, kód, komentáře, commit zprávy, texty i odpovědi asistenta) je **přísně zakázáno používat emoji**.
   - Místo emotikonů používej výhradně **pěkné, minimalistické, jednobarevné inline SVG**.
@@ -58,9 +81,16 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
 
 ## 2. Nástroje IDE, Git a verzování
 
-- **Nativní IDE nástroje:**
-  - K vyhledávání, čtení a inspekci souborů používej nativní workspace nástroje (file search, read_file, grep).
+- **Tool Usage Preferences:**
+  - Always prefer native/built-in IDE file tools (`read_file`, `edit_file`, `write_file`, `view_file_outline`, `search_files`) over terminal commands.
+  - K čtení, úpravám a vytváření souborů používej nativní nástroje `read_file`, `edit_file` a `write_file`.
+  - Pro vyhledávání na internetu a dohledávání dokumentace používej `search_web`.
+  - Do not run shell commands (`cat`, `Get-Content`, `type`, `head`, `tail`, `grep`) solely to read or inspect file contents or search directory structures.
+  - Reserve terminal commands strictly for building, running test suites, git operations, or executing environment-specific scripts.
+  - When reading large files, inspect targeted line slices rather than fetching entire documents.
   - Nepoužívej terminálové zkratky typu `node -e` ani ad-hoc bash skripty pro inspekci souborů.
+- **Grounding v biologických a myrmekologických tématech:**
+  - For grounding in ant related topics, always use **antscout MCP** tools.
 - **Zabezpečení a citlivá data (.gitignore):**
   - Do `.gitignore` vždy striktně zahrnout veškerá citlivá a privátní data (API klíče, soubory `.env*`, privátní certifikáty, tokeny, lokální nastavení a tajné přístupy), aby se žádné privátní údaje nikdy nedostaly do repozitáře.
 - **Commit message (Conventional Commits):**
@@ -122,3 +152,6 @@ Tento soubor slouží jako centrální a závazná sada instrukcí pro AI asiste
   - Nepřidávat české názvy do závorek za odborné termíny, které se běžně nepřekládají.
   - **Diapauza:** Mravenci mají diapauzu; nepoužívat paušálně termíny „hibernace“ či „zimování“, pokud to není přesně fyziologicky podloženo.
   - **Subkasty a kasty:** Major je subkasta dělnice, voják (soldier) je samostatná kasta s unikátními morfologickými znaky (fragmotická hlava, šavlovitá kusadla). Množné číslo: majoři, minoři, medie (nikoliv „majory“, „minora“).
+
+## 3. Grounding a fakta o mravencích (antscout MCP)
+- **Ověřování dat:** Pro grounding in ant related topics vždy používej **antscout MCP** (nástroje jako `search_species`, `species_profile`, `genus_overview`, `get_antwiki`, `search_facts`, `search_papers`, `search_specimen_images`, `search_distribution`).

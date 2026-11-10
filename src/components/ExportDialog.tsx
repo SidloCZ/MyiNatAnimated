@@ -22,7 +22,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   exportProgress,
   downloadUrl,
   downloadFilename,
-  locale = 'cs',
+  locale = 'en',
 }) => {
   const [format, setFormat] = useState<ExportFormat>('mp4');
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>('16:9');

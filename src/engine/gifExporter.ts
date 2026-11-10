@@ -21,7 +21,7 @@ export async function exportToGif(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new Error('Nelze vytvořit 2D canvas pro GIF');
+  if (!ctx) throw new Error('Cannot create a 2D canvas for GIF encoding');
 
   for (let f = 0; f < totalFrames; f++) {
     const t = f / fps;

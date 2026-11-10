@@ -20,7 +20,7 @@ export async function exportToMp4(
     try {
       return await exportWithWebCodecs(durationSeconds, soundCues, config, renderFrame, onProgress);
     } catch (err) {
-      console.warn('WebCodecs selhal, přecházím na MediaRecorder:', err);
+      console.warn('WebCodecs failed, falling back to MediaRecorder:', err);
       return await exportWithMediaRecorder(durationSeconds, soundCues, config, renderFrame, onProgress);
     }
   } else {
@@ -176,7 +176,7 @@ async function exportWithWebCodecs(
       }
       audioEncoder.close();
     } catch (audioErr) {
-      console.warn('Zvuková stopa nemohla být zakódována, pokračuji bez zvuku:', audioErr);
+      console.warn('The audio track could not be encoded, continuing without sound:', audioErr);
     }
   }
 

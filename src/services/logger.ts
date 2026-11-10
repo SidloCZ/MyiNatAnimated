@@ -44,12 +44,12 @@ export function logToTerminal(level: 'info' | 'warn' | 'error', message: string,
 // Global unhandled error and rejection listeners
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
-    logToTerminal('error', `Nezachycená chyba: ${event.message} (${event.filename}:${event.lineno})`, event.error);
+    logToTerminal('error', `Uncaught error: ${event.message} (${event.filename}:${event.lineno})`, event.error);
   });
 
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason instanceof Error ? event.reason.message : String(event.reason);
-    logToTerminal('error', `Nezachycené selhání Promise (unhandledrejection): ${reason}`, event.reason);
+    logToTerminal('error', `Uncaught promise rejection (unhandledrejection): ${reason}`, event.reason);
   });
 }
 

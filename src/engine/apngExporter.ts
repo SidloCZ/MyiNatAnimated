@@ -33,7 +33,7 @@ export function parsePngChunks(bytes: Uint8Array): PngChunk[] {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   for (let i = 0; i < 8; i++) {
     if (bytes[i] !== signature[i]) {
-      throw new Error('Neplatný PNG formát (chybí signatura)');
+      throw new Error('Invalid PNG format (missing signature)');
     }
   }
 
@@ -90,7 +90,7 @@ export interface AssembleApngOptions {
 
 export function assembleApng({ width, height, fps, framesPngBytes }: AssembleApngOptions): Uint8Array {
   if (framesPngBytes.length === 0) {
-    throw new Error('Nelze vytvořit APNG bez snímků');
+    throw new Error('Cannot assemble an APNG without frames');
   }
 
   const numFrames = framesPngBytes.length;
@@ -100,7 +100,7 @@ export function assembleApng({ width, height, fps, framesPngBytes }: AssembleApn
   // Parse first frame
   const firstFrameChunks = parsePngChunks(framesPngBytes[0]);
   const ihdrChunk = firstFrameChunks.find((c) => c.type === 'IHDR');
-  if (!ihdrChunk) throw new Error('Chybí IHDR chunk v prvním snímku');
+  if (!ihdrChunk) throw new Error('Missing IHDR chunk in the first frame');
 
   // Collect result chunks
   const assembledParts: Uint8Array[] = [];
@@ -142,7 +142,7 @@ export function assembleApng({ width, height, fps, framesPngBytes }: AssembleApn
     // IDAT or fdAT chunks
     const idatChunks = chunks.filter((c) => c.type === 'IDAT');
     if (idatChunks.length === 0) {
-      throw new Error(`Snímek ${frameIndex} neobsahuje žádný IDAT chunk`);
+      throw new Error(`Frame ${frameIndex} contains no IDAT chunk`);
     }
 
     if (frameIndex === 0) {
@@ -203,7 +203,7 @@ export async function exportToApng(
     });
 
     if (!frameBlob) {
-      throw new Error(`Nepodařilo se vygenerovat PNG pro snímek ${f}`);
+      throw new Error(`Failed to generate PNG for frame ${f}`);
     }
 
     const arrayBuffer = await frameBlob.arrayBuffer();

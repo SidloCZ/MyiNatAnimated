@@ -50,7 +50,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
   onToggleHighlight,
   onProceed,
   onBack,
-  locale = 'cs',
+  locale = 'en',
 }) => {
   const t = translations[locale];
   // Výchozí řazení: napřed podle oblíbení, poté podle skóre, poté podle komentářů
@@ -276,7 +276,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                   {sortMode === 'score' && (
                     <span className="text-emerald-400 flex items-center gap-1" title={locale === 'cs' ? 'Celkové skóre' : 'Total score'}>
                       <Sparkles className="w-3 h-3" />
-                      {score}&nbsp;b.
+                      {score}&nbsp;{t.scorePointsShort}
                     </span>
                   )}
                   {sortMode === 'date' && (

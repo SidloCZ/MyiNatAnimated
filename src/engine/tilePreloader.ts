@@ -183,7 +183,7 @@ export async function preloadMapTiles(
 
     await warmupMapTiles(map, keyframes, { onProgress });
   } catch (err) {
-    console.warn('Chyba při přednačítání mapových dlaždic:', err);
+    console.warn('Failed to preload map tiles:', err);
   } finally {
     if (map) {
       map.remove();

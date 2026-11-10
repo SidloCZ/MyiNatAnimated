@@ -1,6 +1,7 @@
 import { InatApiResponse, InatObservation } from '../types/inat';
 import { globalInatQueue } from './requestQueue';
 import { getCachedObservations, setCachedObservations } from './cache';
+import { Language, translations } from '../i18n/translations';
 
 const INAT_API_BASE = 'https://api.inaturalist.org/v1';
 
@@ -74,7 +75,13 @@ export interface FetchOptions {
   signal?: AbortSignal;
 }
 
-export async function fetchObservationCount(username: string, d1?: string, d2?: string, signal?: AbortSignal): Promise<number> {
+export async function fetchObservationCount(
+  username: string,
+  d1?: string,
+  d2?: string,
+  signal?: AbortSignal,
+  locale: Language = 'en'
+): Promise<number> {
   const params = new URLSearchParams({
     user_id: username,
     geo: 'true',
@@ -88,9 +95,9 @@ export async function fetchObservationCount(username: string, d1?: string, d2?: 
     const res = await fetch(url, { signal });
     if (!res.ok) {
       if (res.status === 429) {
-        throw new Error('Překročen limit požadavků iNaturalist API (429). Počkejte chvíli.');
+        throw new Error(translations[locale].apiRateLimit);
       }
-      throw new Error(`Chyba iNaturalist API: ${res.status} ${res.statusText}`);
+      throw new Error(`${translations[locale].apiRequestFailed}: ${res.status} ${res.statusText}`);
     }
     const data: InatApiResponse = await res.json();
     return data.total_results || 0;
@@ -104,7 +111,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
     d2,
     maxObservations = 5000,
     useCache = true,
-    locale = 'cs',
+    locale = 'en',
     onProgress,
     signal,
   } = options;
@@ -118,7 +125,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
   }
 
   // 1. Get total count
-  const totalAvailable = await fetchObservationCount(username, d1, d2, signal);
+  const totalAvailable = await fetchObservationCount(username, d1, d2, signal, locale);
   const targetTotal = Math.min(totalAvailable, maxObservations);
 
   if (targetTotal === 0) {
@@ -133,7 +140,7 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
 
   while (allObservations.length < targetTotal) {
     if (signal?.aborted) {
-      throw new Error('Načítání bylo zrušeno.');
+      throw new Error(translations[locale].apiLoadCancelled);
     }
 
     const params = new URLSearchParams({
@@ -156,9 +163,9 @@ export async function fetchObservations(options: FetchOptions): Promise<InatObse
       const res = await fetch(url, { signal });
       if (!res.ok) {
         if (res.status === 429) {
-          throw new Error('Překročen limit iNaturalist API (429).');
+          throw new Error(translations[locale].apiRateLimit);
         }
-        throw new Error(`Chyba načítání: ${res.status}`);
+        throw new Error(`${translations[locale].apiRequestFailed}: ${res.status}`);
       }
       const data: InatApiResponse = await res.json();
       return data.results || [];

@@ -1,4 +1,5 @@
 import { InatObservation } from '../types/inat';
+import { Language } from '../i18n/translations';
 
 export const DEMO_USER = 'prirodovedec_demo';
 
@@ -252,4 +253,34 @@ export const DEMO_OBSERVATIONS: InatObservation[] = [
     ]
   }
 ];
+
+// English common names for demo taxa (iNaturalist returns localized names per `locale`)
+const DEMO_ENGLISH_COMMON_NAMES: Record<string, string> = {
+  'Lucanus cervus': 'Stag Beetle',
+  'Anemone nemorosa': 'Wood Anemone',
+  'Papilio machaon': 'Old World Swallowtail',
+  'Lacerta viridis': 'European Green Lizard',
+  'Stipa pennata': 'Feather Grass',
+  'Alcedo atthis': 'Common Kingfisher',
+  'Formica rufa': 'Red Wood Ant',
+  'Boletus edulis': 'Penny Bun',
+};
+
+/**
+ * Demo observations with common names matching the requested language.
+ * Czech demo data is used as-is, English replaces the common names.
+ */
+export function getDemoObservations(locale: Language = 'en'): InatObservation[] {
+  if (locale !== 'en') return DEMO_OBSERVATIONS;
+
+  return DEMO_OBSERVATIONS.map((observation) => {
+    if (!observation.taxon) return observation;
+    const englishName = DEMO_ENGLISH_COMMON_NAMES[observation.taxon.name];
+    if (!englishName) return observation;
+    return {
+      ...observation,
+      taxon: { ...observation.taxon, preferred_common_name: englishName },
+    };
+  });
+}
 

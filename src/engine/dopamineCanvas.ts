@@ -1,7 +1,7 @@
 import { TimelineData, ObsEvent } from '../types/timeline';
 import { PreloadedSprites } from './spriteAtlas';
 import { getPlaybackStatsAtTime } from './timelineBuilder';
-import { Language, formatLocalizedDate } from '../i18n/translations';
+import { Language, formatLocalizedDate, translations } from '../i18n/translations';
 
 export interface DopamineRenderOptions {
   ctx: CanvasRenderingContext2D;
@@ -162,7 +162,7 @@ export function renderDopamineFrame(options: DopamineRenderOptions) {
     }
   }
 
-  const locale = options.locale || 'cs';
+  const locale = options.locale || 'en';
 
   // 6. Highlight card popup overlay
   if (activeHighlight) {
@@ -207,7 +207,7 @@ function drawExportHud(
   speciesCount: number,
   uiScale = 1.0,
   padY = 24,
-  locale: Language = 'cs'
+  locale: Language = 'en'
 ) {
   const padX = 24 * (uiScale >= 2.5 ? 1.4 : 1.0);
   const formattedDate = formatLocalizedDate(dateStr, locale);
@@ -232,7 +232,7 @@ function drawExportHud(
   // Live counters below
   ctx.fillStyle = '#94a3b8';
   ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  const obsLabel = locale === 'cs' ? 'Pozorování:' : 'Observations:';
+  const obsLabel = translations[locale].hudObsLabel;
   ctx.fillText(obsLabel, padX + 16 * uiScale, padY + 45 * uiScale);
 
   const obsLabelWidth = ctx.measureText(obsLabel).width;
@@ -246,7 +246,7 @@ function drawExportHud(
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = `${Math.round(12 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  const speciesLabel = locale === 'cs' ? 'Druhy:' : 'Species:';
+  const speciesLabel = translations[locale].hudSpeciesLabel;
   ctx.fillText(speciesLabel, speciesX, padY + 45 * uiScale);
 
   const speciesLabelWidth = ctx.measureText(speciesLabel).width;
@@ -266,7 +266,7 @@ function drawHighlightCard(
   sprites?: PreloadedSprites,
   uiScale = 1.0,
   bottomMargin = 50,
-  locale: Language = 'cs'
+  locale: Language = 'en'
 ) {
   // Entrance and exit fade/slide
   let slideY = 0;
@@ -328,7 +328,7 @@ function drawHighlightCard(
   // Common name
   ctx.fillStyle = '#ffffff';
   ctx.font = `bold ${Math.round(15 * uiScale)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  const commonName = event.observation.taxon?.preferred_common_name || event.observation.taxon?.name || (locale === 'cs' ? 'Pozorování' : 'Observation');
+  const commonName = event.observation.taxon?.preferred_common_name || event.observation.taxon?.name || translations[locale].fallbackObservation;
   ctx.fillText(truncateText(ctx, commonName, textMaxW), textX, cardY + 28 * uiScale);
 
   // Scientific name in ITALICS (taxonomic rule!)
