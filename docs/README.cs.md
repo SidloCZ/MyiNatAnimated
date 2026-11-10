@@ -6,7 +6,7 @@ Animovaný mapový příběh z&nbsp;vašich pozorování na iNaturalist.
 
 Aplikace promění vaše terénní nálezy, expedice nebo celoroční bilanci do plynulého kinematografického videa či animovaného GIFu s&nbsp;reaktivním pohybem kamery, zvukovými efekty a&nbsp;prezentací nejzajímavějších druhů.
 
-![Ukázka animovaného mapového příběhu](../test/myinat_antsczech_16x9.gif)
+![Ukázka animovaného mapového příběhu](images/myinat_16x9.gif)
 
 ---
 
@@ -34,10 +34,12 @@ Z&nbsp;aplikace můžete přímo stáhnout:
      - **16:9 (na šířku):** Ideální pro YouTube, prezentace a&nbsp;televize.
      - **9:16 (na výšku):** Optimalizováno pro Instagram Reels, TikTok a&nbsp;YouTube Shorts.
      - **1:1 (čtverec):** Vhodné pro příspěvky na sociální sítě.
-2. **Animovaný GIF:**
+2. **Animovaný APNG:**
+   - Plnobarevná 24bitová animace s&nbsp;vysokou ostrostí a&nbsp;plynulostí, kvalitnější než běžný GIF.
+3. **Animovaný GIF:**
    - Vhodný pro rychlé sdílení na fórech, v&nbsp;blozích nebo chatu.
-3. **Interaktivní zážitek na webu:**
-   - Možnost přehrávat mapový příběh přímo v&nbsp;prohlížeči, libovolně zastavovat, posouvat časovou osu a&nbsp;přepínat mezi mapovými styly (Dark, Satelitní, Voyage, Světlý).
+4. **Interaktivní zážitek na webu:**
+   - Možnost přehrávat mapový příběh přímo v&nbsp;prohlížeči, libovolně zastavovat, posouvat časovou osu a&nbsp;přepínat mezi mapovými styly (Dark, Liberty, Positron, Bright).
 
 ---
 
@@ -74,34 +76,35 @@ Vzhledem k&nbsp;tomu, že moderní webové aplikace využívají Web Workery, ma
 ## Návod krok za krokem: Jak vytvořit svůj příběh
 
 ### Krok 1: Výběr uživatele a období
-Do pole zadejte své uživatelské jméno na iNaturalistu (případně jméno libovolného jiného přírodovědce). Můžete zvolit konkrétní časové rozmezí, nebo využít rychlá tlačítka (*Minulý rok*, *Léto*, *Vše*). Chcete-li si aplikaci jen vyzkoušet, klikněte na tlačítko **Demo**, které okamžitě načte ukázková data.
+Do pole zadejte své uživatelské jméno na iNaturalistu (případně jméno libovolného jiného přírodovědce). Můžete zvolit konkrétní časové rozmezí (přímým zápisem ve formátu `yyyy/mm/dd` nebo interaktivním kalendářem), nebo využít rychlá tlačítka (*Minulý rok*, *Léto*, *Vše*). Chcete-li si aplikaci jen vyzkoušet, klikněte na tlačítko **Demo**, které okamžitě načte ukázková data.
 
-*(Obrázek obrazovky: `docs/images/01_vyhledavani.png`)*
+![Krok 1: Výběr uživatele a období](images/01_vyhledavani.png)
 
 ### Krok 2: Výběr highlightů a filtrování
-Aplikace seřadí pozorování a&nbsp;navrhne až 12 nejvýznamnějších nálezů.
-- Kliknutím na kartu druhu můžete pozorování přidat do výběru nebo jej odebrat.
+Aplikace seřadí pozorování a&nbsp;navrhne optimální výběr nejvýznamnějších nálezů:
+- Kliknutím na kartu druhu můžete pozorování přidat do výběru nebo jej odebrat, případně použít tlačítka *Vybrat doporučené* / *Zrušit výběr*.
 - **Filtr zastřených souřadnic:** Umožňuje vyloučit druhy se záměrně znepřesněnou polohou (ohrožené taxony), aby v&nbsp;mapě nevznikaly umělé skoky.
 - **Filtr izolovaných nálezů:** Umožňuje skrýt ojedinělá pozorování vzdálená stovky kilometrů od hlavní trasy, aby kamera zůstala plynule zaměřena na hlavní lokalitu.
-- **Řazení:** Zvolte, zda se má příběh odvíjet podle skutečného data nálezu v&nbsp;terénu, nebo podle data nahrání na iNaturalist.
+- **Řazení:** Zvolte řazení podle celkového skóre, oblíbenosti, komentářů či data.
 
-*(Obrázek obrazovky: `docs/images/02_vyber_highlightu.png`)*
+![Krok 2: Výběr highlightů a filtrování](images/02_vyber_highlightu.png)
 
 ### Krok 3: Přehrávání a ovládání mapy
-Po kliknutí na *Vytvořit příběh* proběhne rychlá příprava (vygenerování klíčových snímků kamery, atlasu vektorových ikon a&nbsp;přednačtení mapových dlaždic). Následně se spustí samotný přehrávač:
+Po kliknutí na *Načíst pozorování a pokračovat* proběhne rychlá příprava (vygenerování klíčových snímků kamery, atlasu vektorových ikon a&nbsp;přednačtení mapových dlaždic). Následně se spustí samotný přehrávač:
 - Přehrávání můžete kdykoliv pozastavit mezerníkem nebo tlačítkem.
-- Pomocí posuvníku lze okamžitě přeskočit na libovolný okamžik trasy.
-- V&nbsp;pravém horním rohu můžete přepínat styl mapy (Temná, Satelitní, Kontrastní).
+- Pomocí plynulého posuvníku lze okamžitě přeskočit na libovolný okamžik trasy.
+- V&nbsp;pravém horním rohu můžete přepínat styl mapy (**Dark**, **Liberty**, **Positron**, **Bright**).
 
-*(Obrázek obrazovky: `docs/images/03_prehravac_a_mapa.png`)*
+![Krok 3: Přehrávání a ovládání mapy](images/03_prehravac_a_mapa.png)
 
 ### Krok 4: Export videa a GIFu
 Klikněte na tlačítko **Exportovat**. Otevře se okno s&nbsp;volbou parametrů:
-- Vyberte formát: **MP4 video se zvukem** nebo **animovaný GIF**.
+- Zvolte téma mapy: **Dark**, **Liberty**, **Positron** nebo **Bright**.
+- Vyberte formát: **MP4 video se zvukem**, **APNG** nebo **animovaný GIF**.
 - Zvolte poměr stran: **16:9**, **9:16 (Shorts/Reels)** nebo **1:1**.
-- Klikněte na *Zahájit export*. Během několika sekund se soubor deterministicky vyrenderuje a&nbsp;nabídne ke stažení do počítače.
+- Klikněte na *Spustit export*. Během několika sekund se soubor deterministicky vyrenderuje s&nbsp;1,5× zvětšenými kartami pro vysokou čitelnost a&nbsp;nabídne ke stažení do počítače.
 
-*(Obrázek obrazovky: `docs/images/04_dialog_exportu.png`)*
+![Krok 4: Export videa a GIFu](images/04_dialog_exportu.png)
 
 ---
 

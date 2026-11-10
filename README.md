@@ -6,7 +6,7 @@ Animated map stories from your iNaturalist observations.
 
 Transform your field findings, expeditions, or annual recaps into a smooth cinematographic video or animated GIF featuring reactive camera motion, sound effects, and highlights of key species.
 
-![Animated map story preview](test/myinat_antsczech_16x9.gif)
+![Animated map story preview](docs/images/myinat_16x9.gif)
 
 ---
 
@@ -34,10 +34,12 @@ Directly download from the app:
      - **16:9 (Landscape):** Ideal for YouTube, presentations, and desktop displays.
      - **9:16 (Portrait):** Optimized for Instagram Reels, TikTok, and YouTube Shorts.
      - **1:1 (Square):** Suited for social media timeline posts.
-2. **Animated GIF:**
+2. **Animated APNG:**
+   - Full 24-bit color animation with high fidelity, smoother and richer than standard GIF.
+3. **Animated GIF:**
    - Lightweight and convenient for forum posts, blog articles, and chat platforms.
-3. **Interactive Web Experience:**
-   - Play the interactive map story directly in your browser, with pause controls, a scrubbable timeline, and switchable map styles (Dark, Satellite, Voyage, Light).
+4. **Interactive Web Experience:**
+   - Play the interactive map story directly in your browser, with pause controls, a scrubbable timeline, and switchable map styles (Dark, Liberty, Positron, Bright).
 
 ---
 
@@ -74,34 +76,35 @@ Because modern web applications rely on Web Workers, vector map tiles, and ES mo
 ## Step-by-Step Guide: Creating Your Story
 
 ### Step 1: User and Date Range Selection
-Enter your iNaturalist username (or any naturalist's username). Choose a specific date range or use the quick preset buttons (*Last Year*, *Summer*, *All*). If you want to test the app right away, click the **Demo** button to instantly load sample data.
+Enter your iNaturalist username (or any naturalist's username). Choose a specific date range (type directly in `yyyy/mm/dd` format or use the interactive calendar), or use the quick preset buttons (*Last year*, *Summer*, *All*). If you want to test the app right away, click the **Demo** button to instantly load sample data.
 
-*(Screenshot: `docs/images/01_vyhledavani.png`)*
+![Step 1: User and date range selection](docs/images/01_vyhledavani.png)
 
 ### Step 2: Highlight Selection and Filtering
-The app sorts observations and suggests up to 12 top highlight findings.
-- Click any taxon card to toggle its inclusion in the highlight reel.
+The app sorts observations and suggests optimal highlight findings:
+- Click any taxon card to toggle its inclusion in the highlight reel, or use *Select recommended* / *Clear selection*.
 - **Obscured Coordinates Filter:** Exclude taxa with intentionally obscured coordinates (threatened species) to prevent sudden camera jumps.
 - **Isolated Findings Filter:** Hide solitary outlier observations located hundreds of kilometers away from the main route to keep camera movements smooth and focused.
-- **Sorting Order:** Choose whether the story unfolds chronologically by the actual date observed in the field, or by the upload date on iNaturalist.
+- **Sorting Order:** Sort findings by overall score, favorites, comments, or date.
 
-*(Screenshot: `docs/images/02_vyber_highlightu.png`)*
+![Step 2: Highlight selection and filtering](docs/images/02_vyber_highlightu.png)
 
 ### Step 3: Playback and Map Controls
-Clicking *Create Story* triggers brief asset preparation (calculating camera keyframes, rasterizing vector icon sprites, and pre-caching map tiles). The interactive player then starts:
+Clicking *Load observations and continue* triggers asset preparation (calculating camera keyframes, rasterizing vector icon sprites, and pre-caching map tiles). The interactive player then starts:
 - Pause or resume playback anytime using the spacebar or on-screen controls.
-- Use the timeline scrubber to immediately jump to any point in the journey.
-- Switch map styles (Dark, Satellite, Voyage, Light) from the control panel in the top-right corner.
+- Use the smooth custom timeline scrubber to immediately jump to any point in the journey.
+- Switch map styles (**Dark**, **Liberty**, **Positron**, **Bright**) from the control panel in the top-right corner.
 
-*(Screenshot: `docs/images/03_prehravac_a_mapa.png`)*
+![Step 3: Playback and map controls](docs/images/03_prehravac_a_mapa.png)
 
 ### Step 4: Exporting Video and GIF
 Click the **Export** button to open the export configuration dialog:
-- Select your target format: **MP4 Video with Audio** or **Animated GIF**.
+- Choose your map theme: **Dark**, **Liberty**, **Positron**, or **Bright**.
+- Select your target format: **MP4 Video with Audio**, **APNG**, or **Animated GIF**.
 - Choose your aspect ratio: **16:9**, **9:16 (Shorts/Reels)**, or **1:1**.
-- Click *Start Export*. The recording renders deterministically in a few seconds and prompts you to download the finished file.
+- Click *Start export*. The recording renders deterministically in a few seconds with 1.5x scaled UI cards for maximum readability and prompts you to download the finished file.
 
-*(Screenshot: `docs/images/04_dialog_exportu.png`)*
+![Step 4: Export dialog](docs/images/04_dialog_exportu.png)
 
 ---
 
