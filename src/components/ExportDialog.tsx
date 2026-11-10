@@ -76,11 +76,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectFormat('mp4')}
-              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
-                format === 'mp4'
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${format === 'mp4'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <Film className="w-4 h-4 text-emerald-400" />
@@ -93,11 +92,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectFormat('apng')}
-              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
-                format === 'apng'
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${format === 'apng'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
@@ -110,11 +108,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectFormat('gif')}
-              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${
-                format === 'gif'
+              className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition ${format === 'gif'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white ring-1 ring-emerald-500/50'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-cyan-400" />
@@ -135,11 +132,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectAspectRatio('16:9')}
-              className={`p-2.5 rounded-xl border text-center transition ${
-                aspectRatio === '16:9'
+              className={`p-2.5 rounded-xl border text-center transition ${aspectRatio === '16:9'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="text-xs font-semibold">{t.ratio169}</div>
               <div className="text-[10px] text-slate-500">{t.ratio169Desc}</div>
@@ -149,11 +145,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectAspectRatio('9:16')}
-              className={`p-2.5 rounded-xl border text-center transition ${
-                aspectRatio === '9:16'
+              className={`p-2.5 rounded-xl border text-center transition ${aspectRatio === '9:16'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="text-xs font-semibold">{t.ratio916}</div>
               <div className="text-[10px] text-slate-500">{t.ratio916Desc}</div>
@@ -163,11 +158,10 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               type="button"
               disabled={isExporting}
               onClick={() => handleSelectAspectRatio('1:1')}
-              className={`p-2.5 rounded-xl border text-center transition ${
-                aspectRatio === '1:1'
+              className={`p-2.5 rounded-xl border text-center transition ${aspectRatio === '1:1'
                   ? 'border-emerald-500 bg-emerald-500/10 text-white'
                   : 'border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-400'
-              }`}
+                }`}
             >
               <div className="text-xs font-semibold">{t.ratio11}</div>
               <div className="text-[10px] text-slate-500">{t.ratio11Desc}</div>
@@ -183,7 +177,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
                 {t.renderingFrame} {exportProgress.currentFrame}&nbsp;/ {exportProgress.totalFrames}
               </span>
-              <span className="font-mono text-emerald-400">{exportProgress.percentage}&nbsp;%</span>
+              <span className="tabular-nums font-semibold text-emerald-400">{exportProgress.percentage}&nbsp;%</span>
             </div>
             <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
               <div

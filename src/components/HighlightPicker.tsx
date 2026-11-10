@@ -255,7 +255,7 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
                 </div>
 
                 {/* Date badge in bottom-left */}
-                <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[10px] text-slate-300 font-mono shadow border border-slate-800/60">
+                <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-slate-950/85 backdrop-blur-sm text-[10px] text-slate-300 tabular-nums shadow border border-slate-800/60">
                   {formatLocalizedDate(observation.observed_on, locale)}
                 </div>
 
@@ -345,18 +345,16 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
             role="checkbox"
             aria-checked={filterObscured}
             onClick={() => onFilterObscuredChange(!filterObscured)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium select-none transition cursor-pointer ${
-              filterObscured
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium select-none transition cursor-pointer ${filterObscured
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/15'
                 : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-            }`}
+              }`}
           >
             <span
-              className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${
-                filterObscured
+              className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${filterObscured
                   ? 'bg-emerald-500 border-emerald-500 text-slate-950'
                   : 'bg-slate-900 border-slate-600 text-transparent'
-              }`}
+                }`}
             >
               <Check className="w-2.5 h-2.5 stroke-[3]" />
             </span>
@@ -369,18 +367,16 @@ export const HighlightPicker: React.FC<HighlightPickerProps> = ({
             role="checkbox"
             aria-checked={filterIsolated}
             onClick={() => onFilterIsolatedChange(!filterIsolated)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium select-none transition cursor-pointer ${
-              filterIsolated
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium select-none transition cursor-pointer ${filterIsolated
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/15'
                 : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-            }`}
+              }`}
           >
             <span
-              className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${
-                filterIsolated
+              className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors ${filterIsolated
                   ? 'bg-emerald-500 border-emerald-500 text-slate-950'
                   : 'bg-slate-900 border-slate-600 text-transparent'
-              }`}
+                }`}
             >
               <Check className="w-2.5 h-2.5 stroke-[3]" />
             </span>

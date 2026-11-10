@@ -7,6 +7,10 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"Plus Jakarta Sans"', 'Inter', 'monospace'],
+      },
       colors: {
         inat: {
           green: '#74ac00',

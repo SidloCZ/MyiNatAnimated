@@ -34,7 +34,7 @@ export const PrepareProgress: React.FC<PrepareProgressProps> = ({
           style={{ width: `${Math.max(5, Math.min(100, progressPercent))}%` }}
         />
       </div>
-      <div className="flex justify-between items-center text-[11px] text-slate-500 mt-2 font-mono">
+      <div className="flex justify-between items-center text-[11px] text-slate-500 mt-2 tabular-nums">
         <span>{t.progressLabel}</span>
         <span>{Math.round(progressPercent)}&nbsp;%</span>
       </div>

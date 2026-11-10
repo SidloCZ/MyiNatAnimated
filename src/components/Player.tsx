@@ -134,6 +134,7 @@ export const Player: React.FC<PlayerProps> = ({
 
   const animFrameIdRef = useRef<number | null>(null);
   const lastWallTimeRef = useRef<number | null>(null);
+  const centerPlayRef = useRef<HTMLDivElement | null>(null);
   const lastPlayedCueIndexRef = useRef<number>(-1);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -618,6 +619,84 @@ export const Player: React.FC<PlayerProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  // Playful magnetic dodge of the big center play button (a few pixels away from the cursor)
+  useEffect(() => {
+    if (isBuffering || !isMapReady || isPlaying) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(hover: none)').matches) return;
+
+    const MAX_OFFSET = 10; // px – intentionally tiny
+    const RADIUS = 420; // px – falloff distance from the button center
+    const EASE = 0.14;
+
+    const target = { x: 0, y: 0 };
+    const current = { x: 0, y: 0 };
+    let rafId = 0;
+
+    const apply = () => {
+      const el = centerPlayRef.current;
+      if (!el) return;
+      el.style.transform = `translate3d(${current.x.toFixed(2)}px, ${current.y.toFixed(2)}px, 0)`;
+    };
+
+    const tick = () => {
+      rafId = 0;
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+      current.x += dx * EASE;
+      current.y += dy * EASE;
+
+      if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) {
+        current.x = target.x;
+        current.y = target.y;
+      } else {
+        rafId = requestAnimationFrame(tick);
+      }
+      apply();
+    };
+
+    const kick = () => {
+      if (!rafId) rafId = requestAnimationFrame(tick);
+    };
+
+    const onPointerMove = (e: MouseEvent) => {
+      const el = centerPlayRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = cx - e.clientX;
+      const dy = cy - e.clientY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < 1 || dist > RADIUS) {
+        target.x = 0;
+        target.y = 0;
+      } else {
+        const strength = (1 - dist / RADIUS) * MAX_OFFSET;
+        target.x = (dx / dist) * strength;
+        target.y = (dy / dist) * strength;
+      }
+      kick();
+    };
+
+    const reset = () => {
+      target.x = 0;
+      target.y = 0;
+      kick();
+    };
+
+    window.addEventListener('mousemove', onPointerMove, { passive: true });
+    window.addEventListener('blur', reset);
+
+    return () => {
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('blur', reset);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (centerPlayRef.current) centerPlayRef.current.style.transform = '';
+    };
+  }, [isBuffering, isMapReady, isPlaying]);
+
   return (
     <div className="relative w-full h-[85vh] sm:h-[88vh] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950 flex flex-col select-none">
       {/* Map and Canvas Viewport */}
@@ -652,7 +731,7 @@ export const Player: React.FC<PlayerProps> = ({
                     style={{ width: `${bufferProgress}%` }}
                   />
                 </div>
-                <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
+                <div className="flex justify-between items-center text-[11px] tabular-nums text-slate-400">
                   <span>{t.cameraTrackProgress}</span>
                   <span className="text-emerald-400 font-semibold">{bufferProgress}&nbsp;%</span>
                 </div>
@@ -672,14 +751,16 @@ export const Player: React.FC<PlayerProps> = ({
         {/* Big Center Play Button (zobrazí se po načtení mapových podkladů při pozastaveném přehrávání) */}
         {!isBuffering && isMapReady && !isPlaying && (
           <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-            <button
-              type="button"
-              onClick={handleTogglePlay}
-              className="pointer-events-auto w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-emerald-300/40 ring-8 ring-emerald-500/20 group"
-              title={t.playTooltip}
-            >
-              <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-slate-950 ml-1.5 transition-transform group-hover:scale-110" />
-            </button>
+            <div ref={centerPlayRef} className="will-change-transform">
+              <button
+                type="button"
+                onClick={handleTogglePlay}
+                className="pointer-events-auto w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-emerald-300/40 ring-8 ring-emerald-500/20 group"
+                title={t.playTooltip}
+              >
+                <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-slate-950 ml-1.5 transition-transform group-hover:scale-110" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -689,22 +770,22 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-800 backdrop-blur-md text-xs font-semibold transition cursor-pointer"
+              className="h-9 flex items-center gap-1.5 px-3 rounded-xl bg-slate-900/80 hover:bg-slate-900 text-slate-300 hover:text-white border border-slate-800 backdrop-blur-md text-xs font-semibold transition cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               {t.backBtn}
             </button>
-            <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md text-xs font-medium hidden sm:block shadow">
+            <div className="h-9 px-3 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md text-xs font-medium hidden sm:flex items-center shadow">
               <span className="text-slate-300">{t.userPrefix}</span>{' '}
-              <span className="text-white font-bold">{username}</span>
+              <span className="text-white font-bold ml-1">{username}</span>
             </div>
           </div>
 
           {/* Center Date Indicator */}
           {currentStats.dateStr && (
-            <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md">
+            <div className="h-9 pointer-events-auto flex items-center gap-1.5 px-3 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md">
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-xs sm:text-sm font-bold text-white tracking-wide font-mono">
+              <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
                 {formatLocalizedDate(currentStats.dateStr, locale)}
               </span>
             </div>
@@ -717,19 +798,17 @@ export const Player: React.FC<PlayerProps> = ({
                 onClick={() => setIsStyleMenuOpen((open) => !open)}
                 aria-haspopup="listbox"
                 aria-expanded={isStyleMenuOpen}
-                className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-xl bg-slate-900/90 border shadow-md backdrop-blur-md text-xs font-semibold transition cursor-pointer ${
-                  isStyleMenuOpen
+                className={`h-9 flex items-center gap-1.5 pl-3 pr-2.5 rounded-xl bg-slate-900/90 border shadow-md backdrop-blur-md text-xs font-semibold transition cursor-pointer ${isStyleMenuOpen
                     ? 'border-emerald-500/50 text-white'
                     : 'border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
-                }`}
+                  }`}
                 title={t.mapStyleTitle}
               >
                 <MapIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="truncate max-w-[9rem]">{activeStyleLabel}</span>
                 <ChevronDown
-                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-                    isStyleMenuOpen ? 'rotate-180' : ''
-                  }`}
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isStyleMenuOpen ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 
@@ -751,11 +830,10 @@ export const Player: React.FC<PlayerProps> = ({
                           handleStyleChange(option.key);
                           setIsStyleMenuOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition cursor-pointer ${
-                          isActive
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition cursor-pointer ${isActive
                             ? 'bg-emerald-500/15 text-emerald-300'
                             : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <span className="whitespace-nowrap">{option.label}</span>
                         {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
@@ -767,19 +845,19 @@ export const Player: React.FC<PlayerProps> = ({
             </div>
 
             {/* Dynamic observation and species counters */}
-            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md text-xs shadow">
+            <div className="h-9 flex items-center gap-3 px-3 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md text-xs shadow">
               <div className="text-slate-300 flex items-center gap-1.5">
                 <span className="hidden sm:inline font-medium text-slate-300">{t.observationsLabel}</span>
-                <span className="text-emerald-400 font-bold font-mono text-xs sm:text-sm">
+                <span className="text-emerald-400 font-bold text-xs sm:text-sm tabular-nums">
                   {currentStats.obsCount}
                 </span>
-                <span className="text-slate-300 font-mono text-xs sm:text-sm font-semibold">
+                <span className="text-slate-300 text-xs sm:text-sm font-semibold tabular-nums">
                   /&nbsp;{timeline.stats.totalObservations}
                 </span>
               </div>
               <div className="text-slate-300 flex items-center gap-1.5">
                 <span className="hidden sm:inline font-medium text-slate-300">{t.speciesLabel}</span>
-                <span className="text-cyan-400 font-bold font-mono text-xs sm:text-sm">
+                <span className="text-cyan-400 font-bold text-xs sm:text-sm tabular-nums">
                   {currentStats.speciesCount}
                 </span>
               </div>
@@ -788,7 +866,7 @@ export const Player: React.FC<PlayerProps> = ({
             <button
               type="button"
               onClick={() => setIsExportOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-md transition cursor-pointer"
+              className="h-9 flex items-center gap-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-semibold shadow-md transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t.exportBtn}</span>
@@ -801,7 +879,7 @@ export const Player: React.FC<PlayerProps> = ({
       <div className="p-4 bg-slate-950/95 border-t border-slate-800/80 backdrop-blur-md flex flex-col gap-3">
         {/* Scrubber timeline bar */}
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-slate-400 w-10 text-right">
+          <span className="text-xs tabular-nums text-slate-400 w-10 text-right">
             {currentTime.toFixed(1)}s
           </span>
           <div className="relative flex-1 group py-1">
@@ -815,7 +893,7 @@ export const Player: React.FC<PlayerProps> = ({
               className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 group-hover:h-2 transition-all outline-none"
             />
           </div>
-          <span className="text-xs font-mono text-slate-400 w-10">
+          <span className="text-xs tabular-nums text-slate-400 w-10">
             {timeline.duration.toFixed(1)}s
           </span>
         </div>
@@ -846,7 +924,7 @@ export const Player: React.FC<PlayerProps> = ({
             </button>
 
             {/* Playback speed selector */}
-            <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs font-mono text-slate-400">
+            <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5 text-xs tabular-nums text-slate-400">
               {[0.5, 1.0, 2.0].map((s) => (
                 <button
                   key={s}
