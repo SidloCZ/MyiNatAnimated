@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   Map as MapIcon,
   Calendar,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { TimelineData } from '../types/timeline';
 import { PreloadedSprites } from '../engine/spriteAtlas';
@@ -87,6 +89,37 @@ export const Player: React.FC<PlayerProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapStyleKey, setMapStyleKey] = useState<MapStyleKey>('dark');
+  const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const styleMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the map style menu on outside click or Escape
+  useEffect(() => {
+    if (!isStyleMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (styleMenuRef.current && !styleMenuRef.current.contains(event.target as Node)) {
+        setIsStyleMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsStyleMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isStyleMenuOpen]);
+
+  const styleOptions: { key: MapStyleKey; label: string }[] = [
+    { key: 'dark', label: t.styleDark },
+    { key: 'liberty', label: t.styleLiberty },
+    { key: 'positron', label: t.stylePositron },
+    { key: 'bright', label: t.styleBright },
+  ];
+  const activeStyleLabel = styleOptions.find((option) => option.key === mapStyleKey)?.label;
 
   // Dynamic live playback stats (date, live observation count, live species count)
   const currentStats = useMemo(() => {
@@ -678,19 +711,59 @@ export const Player: React.FC<PlayerProps> = ({
           )}
 
           <div className="flex items-center gap-2 pointer-events-auto">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md backdrop-blur-md text-xs font-semibold text-slate-300 hover:border-slate-700 transition">
-              <MapIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <select
-                value={mapStyleKey}
-                onChange={(e) => handleStyleChange(e.target.value as MapStyleKey)}
-                className="bg-transparent text-slate-300 hover:text-white outline-none cursor-pointer text-xs font-semibold pr-1"
+            <div className="relative" ref={styleMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsStyleMenuOpen((open) => !open)}
+                aria-haspopup="listbox"
+                aria-expanded={isStyleMenuOpen}
+                className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 rounded-xl bg-slate-900/90 border shadow-md backdrop-blur-md text-xs font-semibold transition cursor-pointer ${
+                  isStyleMenuOpen
+                    ? 'border-emerald-500/50 text-white'
+                    : 'border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                }`}
                 title={t.mapStyleTitle}
               >
-                <option value="dark" className="bg-slate-900 text-slate-200">{t.styleDark}</option>
-                <option value="liberty" className="bg-slate-900 text-slate-200">{t.styleLiberty}</option>
-                <option value="positron" className="bg-slate-900 text-slate-200">{t.stylePositron}</option>
-                <option value="bright" className="bg-slate-900 text-slate-200">{t.styleBright}</option>
-              </select>
+                <MapIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate max-w-[9rem]">{activeStyleLabel}</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+                    isStyleMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isStyleMenuOpen && (
+                <div
+                  role="listbox"
+                  aria-label={t.mapStyleTitle}
+                  className="absolute top-full right-0 mt-1.5 w-52 p-1 rounded-xl bg-slate-900/95 border border-slate-800 shadow-2xl backdrop-blur-md z-40"
+                >
+                  {styleOptions.map((option) => {
+                    const isActive = option.key === mapStyleKey;
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        onClick={() => {
+                          handleStyleChange(option.key);
+                          setIsStyleMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-left transition cursor-pointer ${
+                          isActive
+                            ? 'bg-emerald-500/15 text-emerald-300'
+                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="whitespace-nowrap">{option.label}</span>
+                        {isActive && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Dynamic observation and species counters */}
