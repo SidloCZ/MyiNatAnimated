@@ -23,6 +23,11 @@ Postřehy a náměty zaznamenané během práce na projektu. Nejde o závazný p
 
 ## Bugy a potenciální rizika
 
+- [ ] **Možný souběh (race condition) v GitHub Actions při deployi Pages v jednom jobu**
+  - **Kde:** `.github/workflows/deploy.yml` (řádky 42–50)
+  - **Kontext:** Krok `actions/deploy-pages@v4` volaný bezprostředně po `actions/upload-pages-artifact@v3` v tomtéž jobu může výjimečně selhat na chybě `No artifacts named "github-pages" were found`, pokud GitHub API nestihne artefakt zaindexovat.
+  - **Návrh řešení:** Rozdělit workflow na standardní dva joby (`build` s uploadem artefaktu a `deploy` s `needs: build`).
+
 - [ ] **Zastaralé české názvy mapových stylů v `MAP_STYLES`**
   - **Kde:** `src/components/Player.tsx` (`MAP_STYLES`, položka `label`)
   - **Kontext:** Pole `label` obsahuje pevně zapsanou češtinu, ale v UI se nepoužívá (select čerpá z `t.styleDark` apod.). Při budoucím použití by se objevil netranslovaný text.
